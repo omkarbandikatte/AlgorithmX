@@ -37,8 +37,8 @@ export default function Sidebar() {
     { icon: Layout, label: "Overview", href: "/dashboard" },
     { icon: FileText, label: "Resume Hub", href: "/resume" },
     { icon: MessageSquare, label: "Doubt Solver", href: "/doubt-solver" },
-    { icon: Users, label: "Mock Interview", href: "/interview" },
     { icon: Map, label: "Roadmap Generator", href: "/roadmap" },
+    { icon: Users, label: "AI Mock Interview", href: "/interview-ai" },
   ];
 
   return (

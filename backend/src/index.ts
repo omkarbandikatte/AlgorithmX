@@ -35,11 +35,7 @@ app.post('/api/ai/roadmap', authMiddleware, async (req: AuthenticatedRequest, re
 
   try {
     console.log(`🗺️  AI Roadmap System Triggered: [${topic}]`);
-    const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.5-flash-lite",
-        generationConfig: { responseMimeType: "application/json" } // FORCING JSON MODE
-    });
-
+    
     const prompt = `
       Generative Task: Create a hierarchical learning roadmap for: "${topic}".
       Return a JSON object with:
@@ -48,8 +44,16 @@ app.post('/api/ai/roadmap', authMiddleware, async (req: AuthenticatedRequest, re
       Requirements: 6-10 nodes, strict dependency graph, beginner to advanced.
     `;
 
-    const result = await model.generateContent(prompt);
-    const text = (await result.response).text().trim();
+    const chat = await groq.chat.completions.create({
+      messages: [
+          { role: "system", content: "You strictly output JSON." },
+          { role: "user", content: prompt }
+      ],
+      model: "llama-3.3-70b-versatile",
+      response_format: { type: "json_object" }
+    });
+
+    const text = chat.choices[0].message?.content || '{}';
 
     console.log("🎨 RAW Response Captured.");
 
@@ -74,46 +78,35 @@ app.post('/api/ai/doubt-solver', authMiddleware, upload.single('file'), async (r
   const file = req.file;
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const parts: any[] = [{ text: query || "Explain this in detail." }];
-
+    const content: any[] = [{ type: "text", text: query || "Explain this in detail." }];
+    
     if (file) {
-      parts.push({ inlineData: { data: file.buffer.toString('base64'), mimeType: file.mimetype } });
+      const base64Image = file.buffer.toString('base64');
+      content.push({
+        type: "image_url",
+        image_url: { url: `data:${file.mimetype};base64,${base64Image}` }
+      });
     }
 
-    const result = await model.generateContent(parts);
-    res.json({ answer: (await result.response).text() });
+    const chat = await groq.chat.completions.create({
+      messages: [{ role: "user", content }],
+      model: "llama-3.2-11b-vision-preview"
+    });
+
+    res.json({ answer: chat.choices[0].message?.content || '' });
   } catch (error: any) {
     console.error('❌ Doubt Solver Error:', error.message);
     res.status(500).json({ error: 'Doubt solver failed.' });
   }
 });
 
+import interviewRoutes from './routes/ai/interview.routes';
+
 // ──────────────────────────────────────────────
-// Interview Turn logic
+// Interview Suite (Groq Modular)
 // ──────────────────────────────────────────────
 
-app.post('/api/ai/interview/turn', authMiddleware, upload.fields([{ name: 'audio' }, { name: 'frame' }]), async (req: AuthenticatedRequest, res: Response) => {
-  const { resumeText, jobDescription, history = "[]" } = req.body;
-  const files = req.files as any;
-
-  try {
-    const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.5-flash-lite",
-        generationConfig: { responseMimeType: "application/json" }
-    });
-    
-    const parts: any[] = [{ text: `AI Interviewer system prompt. Resume: ${resumeText}. History: ${history}. Analyze turn and return JSON: { "nextQuestion": "text", "proctoringScore": number, "proctoringFeedback": "string" }` }];
-
-    if (files.audio?.[0]) parts.push({ inlineData: { data: files.audio[0].buffer.toString('base64'), mimeType: files.audio[0].mimetype } });
-    if (files.frame?.[0]) parts.push({ inlineData: { data: files.frame[0].buffer.toString('base64'), mimeType: files.frame[0].mimetype } });
-
-    const result = await model.generateContent(parts);
-    res.json(JSON.parse((await result.response).text()));
-  } catch (error) {
-    res.status(500).json({ error: 'Interview turn failed' });
-  }
-});
+app.use('/api/ai/interview', interviewRoutes);
 
 // ──────────────────────────────────────────────
 // Resume Suite (LLaMA 3.3)
