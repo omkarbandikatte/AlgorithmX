@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
 import Sidebar from "@/components/dashboard/Sidebar";
 import Navbar from "@/components/dashboard/Navbar";
+import VoiceConcierge from "@/components/dashboard/VoiceConcierge";
 
 export default function DashboardLayout({
   children,
@@ -39,6 +40,7 @@ export default function DashboardLayout({
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           {children}
         </main>
+        <VoiceConcierge />
       </div>
     </div>
   );
