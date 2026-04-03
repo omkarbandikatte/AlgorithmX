@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useApi } from "@/hooks/useApi";
 import { 
   Network, 
@@ -13,14 +13,39 @@ import {
   ArrowRight
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSearchParams } from "next/navigation";
 import RoadmapGraph from "@/components/roadmap/RoadmapGraph";
 
 export default function RoadmapGenerator() {
   const { call } = useApi();
+  const searchParams = useSearchParams();
   const [topic, setTopic] = useState("");
   const [roadmap, setRoadmap] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedNode, setSelectedNode] = useState<any>(null);
+
+  // Voice/Deep Link Auto-Trigger
+  useEffect(() => {
+    if (!searchParams) return;
+    const auto = searchParams.get("auto");
+    const t = searchParams.get("topic");
+    if (auto === "true" && t) {
+        setTopic(t);
+        handleAutoGenerate(t);
+    }
+  }, [searchParams]);
+
+  const handleAutoGenerate = async (t: string) => {
+    setIsLoading(true);
+    try {
+      const res = await call("/api/ai/roadmap", { method: "POST", body: JSON.stringify({ topic: t }) });
+      setRoadmap(res);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();

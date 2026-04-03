@@ -11,9 +11,13 @@ import {
   TrendingUp,
   Brain,
   ShieldCheck,
-  Zap
+  Zap,
+  Calendar,
+  Clock,
+  Network
 } from "lucide-react";
 import Link from "next/link";
+import { useApi } from "@/hooks/useApi";
 import { motion } from "framer-motion";
 
 const FeatureCard = ({ icon: Icon, title, description, href, color }: any) => (
@@ -51,6 +55,24 @@ const StatCard = ({ label, value, icon: Icon, trend }: any) => (
 
 export default function DashboardOverview() {
   const { user } = useAuth();
+  const { call } = useApi();
+  const [history, setHistory] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    async function fetchHistory() {
+        try {
+            const res = await call("/api/user/history");
+            // Combine and sort by createdAt
+            const combined = [
+                ...res.roadmaps.map((r: any) => ({ ...r, type: 'Roadmap', title: r.topic, date: r.createdAt?._seconds ? new Date(r.createdAt._seconds * 1000) : new Date() })),
+                ...res.interviews.map((i: any) => ({ ...i, type: 'Interview', title: `Score: ${i.score}/100`, date: i.createdAt?._seconds ? new Date(i.createdAt._seconds * 1000) : new Date() })),
+                ...res.resumes.map((r: any) => ({ ...r, type: 'Resume', title: `ATS Score: ${r.totalScore}`, date: r.createdAt?._seconds ? new Date(r.createdAt._seconds * 1000) : new Date() }))
+            ].sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 5); // Take top 5
+            setHistory(combined);
+        } catch(e) { console.error(e); }
+    }
+    fetchHistory();
+  }, [call]);
 
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -95,7 +117,7 @@ export default function DashboardOverview() {
               <FeatureCard 
                 icon={MessageSquare} 
                 title="Multimodal Solver" 
-                description="Send voice notes, images of math problems, or text queries. Our Gemini 1.5 core solves doubts instantly."
+                description="Send voice notes, images of math problems, or text queries. Our Groq multi-model core solves doubts instantly."
                 href="/doubt-solver"
                 color="bg-gradient-to-br from-indigo-500 to-purple-600"
               />
@@ -116,18 +138,28 @@ export default function DashboardOverview() {
                     <h3 className="font-bold flex items-center gap-3"><Zap size={18} className="text-yellow-400" /> Neural Activity Feed</h3>
                     <button className="text-xs font-bold text-accent-start hover:underline">View History</button>
                </div>
-               <div className="p-6 space-y-6">
-                   {[
-                       { action: "Resume Scored", detail: "Software Engineer Draft V2 received a score of 84.", time: "14m ago" },
-                       { action: "Doubt Solved", detail: "Quantum Mechanics Equation - Multimodal Image Analysis.", time: "2h ago" },
-                       { action: "Interview Finished", detail: "Senior React Developer simulation completed.", time: "1d ago" },
-                   ].map((item, i) => (
-                       <div key={i} className="flex items-center justify-between group cursor-pointer border-b border-white/5 pb-6 last:border-0 last:pb-0">
-                           <div className="space-y-1">
-                               <p className="text-sm font-bold text-text-primary group-hover:text-accent-start transition-colors">{item.action}</p>
-                               <p className="text-xs text-text-secondary">{item.detail}</p>
+               <div className="p-6 space-y-4">
+                   {history.length === 0 ? (
+                        <div className="text-center p-8 text-text-muted text-sm border-2 border-dashed border-border-subtle rounded-xl flex flex-col items-center gap-3">
+                            <Clock size={24} />
+                            Your neural history is empty. Generate elements to populate this database feed.
+                        </div>
+                   ) : history.map((item, i) => (
+                       <div key={i} className="flex items-center justify-between group p-3 hover:bg-white/5 rounded-xl transition-colors border border-transparent hover:border-border-subtle">
+                           <div className="flex items-center gap-4">
+                               <div className="w-10 h-10 rounded-lg bg-accent-start/10 flex items-center justify-center text-accent-start shrink-0">
+                                   {item.type === 'Roadmap' ? <Network size={20}/> : item.type === 'Interview' ? <Users size={20}/> : <FileText size={20}/>}
+                               </div>
+                               <div className="space-y-0.5">
+                                   <p className="text-sm font-bold text-text-primary group-hover:text-accent-start transition-colors flex items-center gap-2">
+                                       {item.type} Generated
+                                   </p>
+                                   <p className="text-xs text-text-secondary">{item.title}</p>
+                               </div>
                            </div>
-                           <span className="text-[10px] text-text-muted font-bold uppercase">{item.time}</span>
+                           <span className="text-[10px] text-text-muted font-bold uppercase flex items-center gap-1">
+                               <Calendar size={12}/> {item.date.toLocaleDateString()}
+                           </span>
                        </div>
                    ))}
                </div>

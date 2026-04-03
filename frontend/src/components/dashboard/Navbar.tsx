@@ -6,11 +6,15 @@ import {
   Bell, 
   Search, 
   Settings, 
-  UserCircle 
+  UserCircle,
+  Sun,
+  Moon
 } from "lucide-react";
+import { useTheme } from "@/context/ThemeContext";
 
 export default function Navbar() {
   const { user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <header className="h-20 bg-bg-primary/50 backdrop-blur-xl border-b border-border-subtle flex items-center justify-between px-8 z-20">
@@ -28,6 +32,12 @@ export default function Navbar() {
 
       {/* Actions */}
       <div className="flex items-center gap-6">
+        <button 
+          onClick={toggleTheme}
+          className="text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+        >
+          {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
         <button className="relative text-text-secondary hover:text-text-primary transition-colors cursor-pointer">
           <Bell size={20} />
           <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-accent-start rounded-full border-2 border-bg-primary" />
