@@ -82,6 +82,19 @@ export default function ResumeHub() {
     }
   };
 
+  const handleDownload = () => {
+    if (!enhanced) return;
+    const blob = new Blob([enhanced], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "Optimized_Resume.txt";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col gap-2">
@@ -162,7 +175,7 @@ export default function ResumeHub() {
                  <p className="font-bold text-lg animate-pulse">Running Neural Analysis...</p>
                  <p className="text-text-secondary text-sm max-w-xs mx-auto">Evaluating grammar, impact, cross-referencing industry keywords, and scoring structural clarity.</p>
               </motion.div>
-            ) : analysis ? (
+            ) : analysis && !enhanced ? (
               <motion.div key="analysis" initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="space-y-6">
                 
                 {/* Total Score */}
@@ -227,7 +240,9 @@ export default function ResumeHub() {
                             {enhanced}
                         </div>
                         <div className="mt-8 flex gap-4">
-                            <button className="btn-primary w-full cursor-pointer">Download Optimized PDF</button>
+                            <button onClick={handleDownload} className="btn-primary w-full cursor-pointer flex items-center justify-center gap-2">
+                                Download Optimized Text
+                            </button>
                             <button onClick={() => setEnhanced("")} className="btn-ghost px-6 cursor-pointer text-sm">Discard</button>
                         </div>
                     </div>
