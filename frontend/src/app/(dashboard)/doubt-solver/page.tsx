@@ -13,7 +13,8 @@ import {
   Trash2,
   Bot,
   MessageCircle,
-  Video
+  Video,
+  Plus
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
@@ -24,42 +25,78 @@ export default function DoubtSolver() {
   const [activeTab, setActiveTab] = useState<"chat" | "talk">("chat");
   const [query, setQuery] = useState("");
   
-  // Voice/Deep Link Automation
+  // History & Auto-Trigger
+  const autoSentRef = useRef(false);
+
   React.useEffect(() => {
     if (!searchParams) return;
     const tab = searchParams.get("tab");
     if (tab === "talk" || tab === "chat") {
         setActiveTab(tab as any);
     }
+    
+    // Voice Command Deep Link
+    const topic = searchParams.get("topic");
+    const auto = searchParams.get("auto");
+    if (topic && auto === "true" && !autoSentRef.current) {
+        autoSentRef.current = true;
+        setQuery(topic);
+        setTimeout(() => handleSend(undefined, topic), 100);
+    }
   }, [searchParams]);
+
+  const [allHistory, setAllHistory] = useState<any[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string>(Date.now().toString());
+
+  React.useEffect(() => {
+    // Load ChatGPT-style persistent history
+    async function fetchHistory() {
+      try {
+        const res = await call("/api/ai/doubt-solver/history");
+        if (res.messages && res.messages.length > 0) {
+            // Need to convert JSON date strings back to Date objects
+            const parsed = res.messages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }));
+            parsed.sort((a: any, b: any) => a.timestamp.getTime() - b.timestamp.getTime());
+            setAllHistory(parsed);
+            // DO NOT automatically setMessages, let the user start a New Chat by default
+        }
+      } catch (err) {
+        console.error("History fetch error:", err);
+      }
+    }
+    fetchHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [file, setFile] = useState<File | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleSend = async (e?: React.FormEvent) => {
+  const handleSend = async (e?: React.FormEvent, forceQuery?: string) => {
     if (e) e.preventDefault();
-    if (!query && !file) return;
+    const finalQueryText = forceQuery || query;
+    if (!finalQueryText && !file) return;
 
     const userMessage = { 
+        sessionId: currentSessionId,
         role: "user", 
-        content: query, 
+        content: finalQueryText, 
         file: file ? { name: file.name, type: file.type.split('/')[0] } : null,
         timestamp: new Date()
     };
     
     setMessages(prev => [...prev, userMessage]);
-    const currentQuery = query;
-    const currentFile = file;
+    setAllHistory(prev => [...prev, userMessage]);
     
     setQuery("");
     setFile(null);
     setIsLoading(true);
 
     const formData = new FormData();
-    formData.append("query", currentQuery);
-    if (currentFile) {
-        formData.append("file", currentFile);
+    formData.append("query", finalQueryText);
+    formData.append("sessionId", currentSessionId);
+    if (file && !forceQuery) {
+        formData.append("file", file);
     }
 
     try {
@@ -68,18 +105,24 @@ export default function DoubtSolver() {
         body: formData
       });
       
-      setMessages(prev => [...prev, { 
+      const botMsg = { 
+          sessionId: currentSessionId,
           role: "bot", 
           content: res.answer, 
           timestamp: new Date() 
-      }]);
+      };
+      setMessages(prev => [...prev, botMsg]);
+      setAllHistory(prev => [...prev, botMsg]);
     } catch (err: any) {
-      setMessages(prev => [...prev, { 
+      const errMsg = { 
+          sessionId: currentSessionId,
           role: "bot", 
           content: "ERROR: Failed to synthesize solution. " + err.message, 
           timestamp: new Date(),
           isError: true
-      }]);
+      };
+      setMessages(prev => [...prev, errMsg]);
+      setAllHistory(prev => [...prev, errMsg]);
     } finally {
       setIsLoading(false);
     }
@@ -118,10 +161,42 @@ export default function DoubtSolver() {
       </div>
 
       {activeTab === "chat" ? (
-        <div className="flex-1 flex flex-col space-y-6 overflow-hidden animate-in fade-in zoom-in-95 duration-300">
-            {/* Chat Area */}
-            <div className="flex-1 card-glass p-0 border-border-subtle bg-white/[0.01] relative overflow-hidden">
-                <div className="absolute inset-0 p-8 flex flex-col gap-6 overflow-y-auto">
+        <div className="flex-1 flex gap-6 overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+            
+            {/* ChatGPT Style History Sidebar */}
+            <div className="hidden lg:flex flex-col w-72 card-glass p-0 border-border-subtle bg-bg-surface/50 overflow-hidden relative">
+                <div className="p-5 border-b border-white/5 flex items-center justify-between z-10 bg-bg-surface/80 backdrop-blur-md">
+                    <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Chat History</span>
+                    <button onClick={() => {
+                        setCurrentSessionId(Date.now().toString());
+                        setMessages([]);
+                    }} className="flex items-center gap-1 text-[10px] uppercase font-bold text-accent-start hover:text-accent-end bg-accent-start/10 px-2 py-1 rounded-md transition-colors">
+                        <Plus size={12}/> New
+                    </button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-3 space-y-1 relative z-0">
+                    {Array.from(new Set(allHistory.map(m => m.sessionId))).map(sid => {
+                       const msg = allHistory.find(m => m.sessionId === sid && m.role === 'user');
+                       return { id: sid, title: msg?.content || "Image context" };
+                    }).reverse().map((s: any) => (
+                        <div key={s.id} onClick={() => {
+                            setCurrentSessionId(s.id);
+                            setMessages(allHistory.filter(m => m.sessionId === s.id));
+                        }} className={`p-3 text-xs rounded-xl cursor-pointer transition-colors flex items-center gap-3 group ${currentSessionId === s.id ? "bg-white/10 text-text-primary" : "text-text-secondary hover:bg-white/5 hover:text-text-primary"}`}>
+                            <MessageCircle size={14} className={`${currentSessionId === s.id ? "text-accent-start" : "text-text-muted group-hover:text-accent-start"} shrink-0`} />
+                            <span className="truncate">{s.title}</span>
+                        </div>
+                    ))}
+                    {allHistory.length === 0 && (
+                        <div className="p-4 text-xs text-text-muted text-center italic mt-10">Start a conversation to build neural history.</div>
+                    )}
+                </div>
+            </div>
+
+            <div className="flex-1 flex flex-col space-y-6 overflow-hidden">
+                {/* Chat Area */}
+                <div className="flex-1 card-glass p-0 border-border-subtle bg-white/[0.01] relative overflow-hidden">
+                    <div className="absolute inset-0 p-8 flex flex-col gap-6 overflow-y-auto">
                     {messages.length === 0 && (
                         <div className="h-full flex flex-col items-center justify-center text-center max-w-sm mx-auto space-y-4 opacity-50">
                             <Bot size={56} className="text-accent-start" />
@@ -163,7 +238,10 @@ export default function DoubtSolver() {
                         </div>
                     )}
                 </div>
-                <button onClick={() => setMessages([])} className="absolute top-6 right-6 p-2 text-text-muted hover:text-red-400 transition-colors"><Trash2 size={20}/></button>
+                <button onClick={async () => {
+                    // Fast clear history for UI, real app would have DELETE endpoint
+                    setMessages([]);
+                }} className="absolute top-6 right-6 p-2 text-text-muted hover:text-red-400 transition-colors"><Trash2 size={20}/></button>
             </div>
 
             {/* Input Component */}
@@ -185,6 +263,7 @@ export default function DoubtSolver() {
                         <Send size={22} />
                     </button>
                 </form>
+            </div>
             </div>
         </div>
       ) : (

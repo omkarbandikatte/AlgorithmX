@@ -139,10 +139,42 @@ app.post('/api/ai/doubt-solver', authMiddleware, upload.single('file'), async (r
         answer = chat.choices[0].message.content || "";
     }
 
+    // Auto-Save Chat to DB
+    if (db) {
+      await db.collection('users').doc(req.user!.uid).collection('doubtChat').add({
+        sessionId: req.body.sessionId || Date.now().toString(),
+        userQuery: finalQuery,
+        botAnswer: answer,
+        hasAttachment: !!file,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    }
+
     res.json({ answer });
   } catch (error: any) {
     console.error('❌ Doubt Solver Error:', error.message);
     res.status(500).json({ error: 'Doubt solver failed.' });
+  }
+});
+
+app.get('/api/ai/doubt-solver/history', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  if (!db) return res.status(500).json({ error: 'DB not initialized' });
+  try {
+    const snap = await db.collection('users').doc(req.user!.uid).collection('doubtChat').get();
+    
+    // Format them for the frontend as the existing messages array
+    const messages: any[] = [];
+    snap.docs.forEach((doc) => {
+      const data = doc.data();
+      const timestamp = data.createdAt?._seconds ? new Date(data.createdAt._seconds * 1000) : new Date();
+      const sid = data.sessionId || 'Legacy Chat';
+      messages.push({ sessionId: sid, role: 'user', content: data.userQuery, timestamp, file: data.hasAttachment ? { name: 'Attachment', type: 'file' } : null });
+      messages.push({ sessionId: sid, role: 'bot', content: data.botAnswer, timestamp });
+    });
+    res.json({ messages });
+  } catch (error: any) {
+    console.error('History fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch chat history', details: error.message });
   }
 });
 
@@ -229,7 +261,13 @@ app.post('/api/ai/interview/final-feedback', authMiddleware, async (req: Authent
 app.post('/api/ai/resume/score', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const chat = await groq.chat.completions.create({
-      messages: [{ role: 'system', content: 'HR Expert. JSON Score: totalScore, breakdown, highlights.' }, { role: 'user', content: req.body.resumeText }],
+      messages: [
+        { 
+          role: 'system', 
+          content: 'You are an elite HR Expert Evaluator. Analyze the provided resume text and return STRICTLY a JSON object with this exact structure: { "totalScore": number (0-100), "breakdown": { "Grammar": score, "Impact": score, "Keywords": score, "Structure": score }, "highlights": { "strengths": ["str1", "str2"], "weaknesses": ["str1", "str2"] } }' 
+        }, 
+        { role: 'user', content: req.body.resumeText }
+      ],
       model: 'llama-3.3-70b-versatile',
       response_format: { type: 'json_object' }
     });
@@ -263,6 +301,27 @@ app.post('/api/ai/resume/import', authMiddleware, upload.single('resume'), async
     res.json({ text });
   } catch (error) {
     res.status(500).json({ error: 'Parse failed.' });
+  }
+});
+
+app.post('/api/ai/resume/enhance', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  const { resumeText, focusArea } = req.body;
+  try {
+    const chat = await groq.chat.completions.create({
+      messages: [
+        { 
+            role: 'system', 
+            content: `You are an expert Resume Writer and ATS Optimizer. Rewrite the given resume text strictly to dramatically improve professional impact, quantifiable achievements, and active verbs. Focus on: ${focusArea || 'General improvement'}. Output the raw enhanced resume text. Put it in a JSON object under the key "enhancedText".` 
+        }, 
+        { role: 'user', content: resumeText }
+      ],
+      model: 'llama-3.3-70b-versatile',
+      response_format: { type: 'json_object' }
+    });
+    const resultJson = JSON.parse(chat.choices[0].message.content || '{}');
+    res.json(resultJson);
+  } catch (error) {
+    res.status(500).json({ error: 'Enhancement failed.' });
   }
 });
 
