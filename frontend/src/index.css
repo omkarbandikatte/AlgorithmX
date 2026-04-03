@@ -1,0 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #0a0a0c;
+  --bg-surface: #121216;
+  --accent-start: #ff6b00;
+  --accent-end: #ff8e3c;
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-muted: #52525b;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+}
+
+@layer base {
+  body {
+    @apply bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans selection:bg-accent-start/30;
+  }
+}
+
+@layer components {
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-accent-start to-accent-end font-black;
+  }
+
+  .card-glass {
+    @apply bg-white/[0.03] backdrop-blur-3xl border border-white/[0.08] rounded-3xl shadow-2xl;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-r from-accent-start to-accent-end text-white font-bold py-3 px-6 rounded-2xl hover:scale-[1.02] active:scale-95 transition-all duration-300 shadow-[0_0_20px_rgba(255,107,0,0.2)] flex items-center justify-center gap-2;
+  }
+
+  .btn-ghost {
+    @apply bg-white/5 text-text-primary font-bold py-3 px-6 rounded-2xl hover:bg-white/10 active:scale-95 transition-all duration-300 border border-white/5;
+  }
+
+  .btn-sm {
+    @apply py-2 px-4 text-xs;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-white/10 rounded-full hover:bg-white/20;
+  }
+}
+
+/* Animations */
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+  100% { transform: translateY(0px); }
+}

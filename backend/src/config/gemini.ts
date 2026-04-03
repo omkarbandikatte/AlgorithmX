@@ -18,6 +18,6 @@ if (!process.env.GEMINI_API_KEY) {
  * - gemini-1.5-flash: Fast & affordable for most tasks
  * - gemini-1.5-pro: High-reasoning and deep context
  */
-export const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+export const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
 export default genAI;

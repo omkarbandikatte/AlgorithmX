@@ -15,6 +15,8 @@ export const metadata: Metadata = {
   keywords: ["AI", "education", "learning", "multilingual", "offline", "adaptive"],
 };
 
+import { AuthProvider } from "@/context/AuthContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -23,7 +25,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full`}>
       <body className="min-h-full flex flex-col font-sans antialiased">
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

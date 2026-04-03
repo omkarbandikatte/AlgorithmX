@@ -7,7 +7,7 @@ import mammoth from 'mammoth';
 import admin, { db, rtdb } from './config/firebase';
 import { authMiddleware, AuthenticatedRequest } from './middleware/auth';
 import groq from './config/groq';
-import { model as gemini } from './config/gemini';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 dotenv.config();
 
@@ -15,185 +15,141 @@ const app = express();
 const port = process.env.PORT || 3001;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ limit: '20mb', extended: true }));
 
-// Set up multer for handling media uploads (memory storage)
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
 const upload = multer({ 
   storage: multer.memoryStorage(),
-  limits: { fileSize: 15 * 1024 * 1024 } // 15MB limit for video/audio frames
+  limits: { fileSize: 30 * 1024 * 1024 } // 30MB
 });
 
 // ──────────────────────────────────────────────
-// Protected Auth Route
-// ──────────────────────────────────────────────
-app.get('/api/me', authMiddleware, (req: AuthenticatedRequest, res: Response) => {
-  res.json({
-    uid: req.user?.uid,
-    email: req.user?.email,
-    name: req.user?.name,
-    picture: req.user?.picture,
-    emailVerified: req.user?.email_verified,
-  });
-});
-
-// ──────────────────────────────────────────────
-// Proctored Voice Interview Assistant (Gemini 1.5 Multimodal)
+// Resolved AI Roadmap (Exhaustive Precision Mode)
 // ──────────────────────────────────────────────
 
-/**
- * AI Interview: Turn-by-turn processing with proctoring.
- * Accepts: audio (voice answer), frame (webcam image), resumeText, jobDescription
- */
-app.post('/api/ai/interview/turn', authMiddleware, upload.fields([
-  { name: 'audio', maxCount: 1 },
-  { name: 'frame', maxCount: 1 }
-]), async (req: AuthenticatedRequest, res: Response) => {
-  const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-  const { resumeText, jobDescription, history = "[]" } = req.body;
+app.post('/api/ai/roadmap', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  const { topic } = req.body;
+  if (!topic) return res.status(400).json({ error: 'Please provide a topic.' });
 
   try {
-    const promptParts: any[] = [
-      `You are a professional AI Interviewer and Proctor. 
-       Context:
-       - Resume: ${resumeText || 'Not provided'}
-       - Job Description: ${jobDescription || 'Not provided'}
-       - Previous History: ${history}
-       
-       Tasks:
-       1. Analyze the user's spoken answer (audio).
-       2. Analyze the user's physical presence (if frame provided). Check for eye contact, movement, or background activity and provide a proctoring update.
-       3. Provide the next intelligent follow-up question.
-       
-       Response Format: JSON strictly with keys: { nextQuestion: string, proctoringScore: number (0-100), proctoringFeedback: string, interviewFeedback: string }`
-    ];
+    console.log(`🗺️  AI Roadmap System Triggered: [${topic}]`);
+    const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.5-flash-lite",
+        generationConfig: { responseMimeType: "application/json" } // FORCING JSON MODE
+    });
 
-    // Add Audio data
-    if (files['audio']) {
-      promptParts.push({
-        inlineData: { data: files['audio'][0].buffer.toString('base64'), mimeType: files['audio'][0].mimetype }
-      });
-    }
+    const prompt = `
+      Generative Task: Create a hierarchical learning roadmap for: "${topic}".
+      Return a JSON object with:
+      - nodes: array of {id: string, label: string, description: string}
+      - edges: array of {from: string, to: string}
+      Requirements: 6-10 nodes, strict dependency graph, beginner to advanced.
+    `;
 
-    // Add Video Frame (Proctoring image)
-    if (files['frame']) {
-      promptParts.push({
-        inlineData: { data: files['frame'][0].buffer.toString('base64'), mimeType: files['frame'][0].mimetype }
-      });
-    }
+    const result = await model.generateContent(prompt);
+    const text = (await result.response).text().trim();
 
-    const result = await gemini.generateContent(promptParts);
-    const response = await result.response;
-    const resultJson = JSON.parse(response.text().replace(/```json|```/g, ''));
+    console.log("🎨 RAW Response Captured.");
 
-    // To output voice, frontend uses Web Speech API or separate TTS call.
-    // Backend can return the text for speech synthesis on the client for zero-latency.
-    res.json(resultJson);
-  } catch (error) {
-    console.error('Interview Turn Error:', error);
-    res.status(500).json({ error: 'Failed to process interview turn' });
-  }
-});
-
-/**
- * AI Interview: Final Feedback Summary
- */
-app.post('/api/ai/interview/final-feedback', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
-  const { sessionHistory, resumeText, jobDescription } = req.body;
-
-  try {
-    const result = await gemini.generateContent([
-      `You are a Senior Career Coach. Analyze the full interview session history and provide a detailed report.
-       Resume: ${resumeText}
-       JD: ${jobDescription}
-       History: ${JSON.stringify(sessionHistory)}
-       
-       Provide a structured report including:
-       - Final Fit Score (0-100)
-       - Proctoring Integrity Score (0-100)
-       - Detailed breakdown of soft/hard skills shown.
-       - Areas for improvement.`
-    ]);
-
-    const response = await result.response;
-    res.json({ report: response.text() });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to generate final report' });
+    const roadmap = JSON.parse(text);
+    console.log("✅ Final Parsing Successful");
+    res.json(roadmap);
+  } catch (error: any) {
+    console.error('❌ AI Roadmap Failure Deep-Dive:', error.message);
+    res.status(500).json({ 
+        error: 'AI Roadmap engine error.', 
+        details: error.message || 'Generation or parsing failed.' 
+    });
   }
 });
 
 // ──────────────────────────────────────────────
-// AI Doubt Solver & Resume Services
+// Multimodal Doubt Solver (Simplified Stability)
 // ──────────────────────────────────────────────
 
-/**
- * AI Doubt Solver: Multimodal doubt analysis (Gemini 1.5)
- */
 app.post('/api/ai/doubt-solver', authMiddleware, upload.single('file'), async (req: AuthenticatedRequest, res: Response) => {
   const { query } = req.body;
   const file = req.file;
 
-  if (!query && !file) return res.status(400).json({ error: 'Provide at least a text query or a file' });
-
   try {
-    const promptParts: any[] = [query || "Explain this in detail."];
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const parts: any[] = [{ text: query || "Explain this in detail." }];
 
     if (file) {
-      promptParts.push({
-        inlineData: { data: file.buffer.toString('base64'), mimeType: file.mimetype }
-      });
+      parts.push({ inlineData: { data: file.buffer.toString('base64'), mimeType: file.mimetype } });
     }
 
-    const result = await gemini.generateContent(promptParts);
-    const response = await result.response;
-    res.json({ answer: response.text() });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to solve doubt' });
+    const result = await model.generateContent(parts);
+    res.json({ answer: (await result.response).text() });
+  } catch (error: any) {
+    console.error('❌ Doubt Solver Error:', error.message);
+    res.status(500).json({ error: 'Doubt solver failed.' });
   }
 });
 
-/**
- * Resume Import Service
- */
-app.post('/api/ai/resume/import', authMiddleware, upload.single('resume'), async (req: AuthenticatedRequest, res: Response) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+// ──────────────────────────────────────────────
+// Interview Turn logic
+// ──────────────────────────────────────────────
+
+app.post('/api/ai/interview/turn', authMiddleware, upload.fields([{ name: 'audio' }, { name: 'frame' }]), async (req: AuthenticatedRequest, res: Response) => {
+  const { resumeText, jobDescription, history = "[]" } = req.body;
+  const files = req.files as any;
 
   try {
-    let text = '';
-    const fileBuffer = req.file.buffer;
-    const fileType = req.file.mimetype;
+    const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.5-flash-lite",
+        generationConfig: { responseMimeType: "application/json" }
+    });
+    
+    const parts: any[] = [{ text: `AI Interviewer system prompt. Resume: ${resumeText}. History: ${history}. Analyze turn and return JSON: { "nextQuestion": "text", "proctoringScore": number, "proctoringFeedback": "string" }` }];
 
-    if (fileType === 'application/pdf') {
-      const data = await pdf(fileBuffer);
-      text = data.text;
-    } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-      const data = await mammoth.extractRawText({ buffer: fileBuffer });
-      text = data.value;
-    }
+    if (files.audio?.[0]) parts.push({ inlineData: { data: files.audio[0].buffer.toString('base64'), mimeType: files.audio[0].mimetype } });
+    if (files.frame?.[0]) parts.push({ inlineData: { data: files.frame[0].buffer.toString('base64'), mimeType: files.frame[0].mimetype } });
 
-    res.json({ text, fileName: req.file.originalname });
+    const result = await model.generateContent(parts);
+    res.json(JSON.parse((await result.response).text()));
   } catch (error) {
-    res.status(500).json({ error: 'Failed to parse resume' });
+    res.status(500).json({ error: 'Interview turn failed' });
   }
 });
 
 // ──────────────────────────────────────────────
-// Health & Utility
+// Resume Suite (LLaMA 3.3)
 // ──────────────────────────────────────────────
-app.get('/api/health', (req: Request, res: Response) => {
-  res.json({
-    status: 'ok',
-    message: 'Rakshak AI Backend is running smoothly',
-    firebase: admin.apps.length > 0 ? 'connected' : 'not configured',
-    services: {
-      auth: !!admin.auth(),
-      db: !!db,
-      rtdb: !!rtdb,
-      ai_groq: !!process.env.GROQ_API_KEY,
-      ai_gemini: !!process.env.GEMINI_API_KEY
-    }
-  });
+
+app.post('/api/ai/resume/score', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const chat = await groq.chat.completions.create({
+      messages: [{ role: 'system', content: 'HR Expert. JSON Score: totalScore, breakdown, highlights.' }, { role: 'user', content: req.body.resumeText }],
+      model: 'llama-3.3-70b-versatile',
+      response_format: { type: 'json_object' }
+    });
+    res.json(JSON.parse(chat.choices[0].message.content || '{}'));
+  } catch (error) {
+    res.status(500).json({ error: 'Scoring failed.' });
+  }
 });
 
-app.listen(port, () => {
-  console.log(`🚀 Rakshak AI Backend listening at http://localhost:${port}`);
+app.post('/api/ai/resume/import', authMiddleware, upload.single('resume'), async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.file) return res.status(400).json({ error: 'No file' });
+  try {
+    let text = '';
+    if (req.file.mimetype === 'application/pdf') {
+      text = (await pdf(req.file.buffer)).text;
+    } else {
+      text = (await mammoth.extractRawText({ buffer: req.file.buffer })).value;
+    }
+    res.json({ text });
+  } catch (error) {
+    res.status(500).json({ error: 'Parse failed.' });
+  }
 });
+
+// ──────────────────────────────────────────────
+// Health
+// ──────────────────────────────────────────────
+app.get('/api/health', (req, res) => res.json({ status: 'ok', firebase: admin.apps.length > 0 }));
+
+app.listen(port, () => console.log(`🚀 Rakshak AI Backend listening at http://localhost:${port}`));
