@@ -88,7 +88,7 @@ export default function RoadmapGraph({ nodes: initialNodes, edges: initialEdges,
         onNodeClick={(_, node) => onNodeClick(node)}
         fitView
       >
-        <Background color="#121216" gap={50} variant={Background.Lines as any} />
+        <Background color="#121216" gap={50} variant={"lines" as any} />
         <Controls />
       </ReactFlow>
     </div>
