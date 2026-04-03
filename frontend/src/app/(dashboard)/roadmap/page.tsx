@@ -100,7 +100,7 @@ export default function RoadmapGenerator() {
       </div>
 
       {/* Main Graph View */}
-      <div className="flex-1 card-glass p-0 border-border-subtle bg-white/[0.01] overflow-hidden relative">
+      <div className="flex-1 card-glass p-0 border-border-subtle overflow-hidden relative">
           <AnimatePresence mode="wait">
             {isLoading ? (
                 <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-bg-primary/80 backdrop-blur-md gap-4">
@@ -142,11 +142,11 @@ export default function RoadmapGenerator() {
                              <h4 className="text-2xl font-black">{selectedNode.data.label}</h4>
                              <p className="text-[10px] font-black uppercase text-accent-start tracking-[2px]">Resource Module</p>
                         </div>
-                        <p className="text-sm text-text-secondary leading-relaxed bg-white/5 border border-white/5 p-4 rounded-xl">
+                        <p className="text-sm text-text-secondary leading-relaxed bg-hover-bg border border-border-subtle p-4 rounded-xl">
                             {selectedNode.data.description}
                         </p>
 
-                        <div className="pt-6 border-t border-white/5 space-y-4">
+                        <div className="pt-6 border-t border-border-subtle space-y-4">
                             <button className="btn-primary w-full text-xs gap-3">
                                 <Zap size={14}/> Dive Deep into Topics
                             </button>
@@ -161,7 +161,7 @@ export default function RoadmapGenerator() {
                              <span>Learning Stats</span>
                              <span className="text-accent-start">Pro Level</span>
                          </div>
-                         <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                         <div className="h-1.5 w-full bg-hover-bg rounded-full overflow-hidden">
                              <div className="h-full w-1/4 bg-accent-start" />
                          </div>
                     </div>

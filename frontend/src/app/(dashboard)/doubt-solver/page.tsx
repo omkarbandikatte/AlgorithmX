@@ -95,7 +95,7 @@ export default function DoubtSolver() {
               <p className="text-text-secondary text-sm">Switch between neural chat solving and real-time voice talk.</p>
           </div>
           
-          <div className="flex items-center gap-1 p-1 bg-white/5 rounded-2xl border border-border-subtle backdrop-blur-xl">
+          <div className="flex items-center gap-1 p-1 bg-hover-bg rounded-2xl border border-border-subtle backdrop-blur-xl">
               <button 
                 onClick={() => setActiveTab("chat")}
                 className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -120,7 +120,7 @@ export default function DoubtSolver() {
       {activeTab === "chat" ? (
         <div className="flex-1 flex flex-col space-y-6 overflow-hidden animate-in fade-in zoom-in-95 duration-300">
             {/* Chat Area */}
-            <div className="flex-1 card-glass p-0 border-border-subtle bg-white/[0.01] relative overflow-hidden">
+            <div className="flex-1 card-glass p-0 border-border-subtle relative overflow-hidden">
                 <div className="absolute inset-0 p-8 flex flex-col gap-6 overflow-y-auto">
                     {messages.length === 0 && (
                         <div className="h-full flex flex-col items-center justify-center text-center max-w-sm mx-auto space-y-4 opacity-50">
@@ -137,11 +137,11 @@ export default function DoubtSolver() {
                             animate={{ opacity: 1, y: 0 }}
                             className={`flex items-start gap-4 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
                         >
-                            <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center ${msg.role === "user" ? "bg-accent-start text-white shadow-lg" : "bg-white/10"}`}>
+                            <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center ${msg.role === "user" ? "bg-accent-start text-white shadow-lg" : "bg-hover-bg"}`}>
                                 {msg.role === "user" ? <UserCircle size={20} /> : <Sparkles size={20} className="text-accent-start" />}
                             </div>
                             <div className={`max-w-[75%] space-y-2`}>
-                                <div className={`px-5 py-4 rounded-2xl leading-relaxed text-sm ${msg.role === "user" ? "bg-accent-start/5 border border-accent-start/20" : "bg-white/5 border border-border-subtle"}`}>
+                                <div className={`px-5 py-4 rounded-2xl leading-relaxed text-sm ${msg.role === "user" ? "bg-accent-start/5 border border-accent-start/20" : "bg-hover-bg border border-border-subtle"}`}>
                                     {msg.file && (
                                         <div className="mb-3 px-3 py-2 bg-black/20 rounded-lg flex items-center gap-2 text-[10px] uppercase font-black text-accent-start italic">
                                             {msg.file.type === "image" ? <ImageIcon size={14}/> : <Mic size={14}/>}
@@ -158,7 +158,7 @@ export default function DoubtSolver() {
                     ))}
                     {isLoading && (
                         <div className="flex items-center gap-3 animate-pulse">
-                            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-accent-start"><Sparkles size={20}/></div>
+                            <div className="w-8 h-8 rounded-lg bg-hover-bg flex items-center justify-center text-accent-start"><Sparkles size={20}/></div>
                             <span className="text-[10px] uppercase font-black tracking-widest text-text-muted">AI Synthesis in progress...</span>
                         </div>
                     )}
@@ -179,9 +179,9 @@ export default function DoubtSolver() {
                     )}
                 </AnimatePresence>
                 <form onSubmit={handleSend} className="flex items-center p-3 gap-2">
-                    <button type="button" onClick={() => fileRef.current?.click()} className="p-3 text-text-muted hover:text-accent-start transition-all hover:bg-white/5 rounded-xl"><Paperclip size={22} /></button>
+                    <button type="button" onClick={() => fileRef.current?.click()} className="p-3 text-text-muted hover:text-accent-start transition-all hover:bg-hover-bg rounded-xl"><Paperclip size={22} /></button>
                     <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Submit your doubt or attach an image..." className="flex-1 bg-transparent border-none py-3 px-2 text-sm focus:outline-none" />
-                    <button className={`p-4 rounded-xl shadow-xl transition-all ${query || file ? "bg-accent-start text-white hover:bg-accent-end" : "bg-white/5 text-text-muted"}`}>
+                    <button className={`p-4 rounded-xl shadow-xl transition-all ${query || file ? "bg-accent-start text-white hover:bg-accent-end" : "bg-hover-bg text-text-muted"}`}>
                         <Send size={22} />
                     </button>
                 </form>

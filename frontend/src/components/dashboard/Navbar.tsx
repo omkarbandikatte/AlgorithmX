@@ -25,7 +25,7 @@ export default function Navbar() {
           <input 
             type="text" 
             placeholder="Search learning resources, modules, or tools..." 
-            className="w-full bg-white/5 border border-border-subtle rounded-xl py-2.5 pl-11 pr-4 text-sm focus:outline-none focus:border-accent-start/50 transition-all focus:bg-white/[0.08]"
+            className="w-full bg-hover-bg border border-border-subtle rounded-xl py-2.5 pl-11 pr-4 text-sm focus:outline-none focus:border-accent-start/50 transition-all focus:bg-hover-bg"
           />
         </div>
       </div>
@@ -52,7 +52,7 @@ export default function Navbar() {
             <p className="text-sm font-semibold">{user?.displayName || "Student User"}</p>
             <p className="text-[10px] text-text-secondary uppercase tracking-widest font-bold">Standard Account</p>
           </div>
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-pink-500 border-2 border-white/10 flex items-center justify-center overflow-hidden">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-pink-500 border-2 border-border-subtle flex items-center justify-center overflow-hidden">
              {user?.photoURL ? (
                 <img src={user.photoURL} alt="avatar" className="w-full h-full object-cover" />
              ) : (

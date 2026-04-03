@@ -23,7 +23,7 @@ export default function GlassCard({
       className={`glass-card p-6 transition-all duration-300 ${
         glowOnHover
           ? "hover:border-accent-start/30 hover:shadow-[0_0_30px_rgba(255,122,24,0.08)]"
-          : "hover:border-white/10"
+          : "hover:border-border-subtle"
       } ${className}`}
       {...props}
     >

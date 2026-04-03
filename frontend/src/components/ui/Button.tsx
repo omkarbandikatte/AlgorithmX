@@ -38,7 +38,7 @@ export default function Button({
     secondary:
       "bg-transparent border border-border-subtle text-text-primary hover:border-accent-start/40 hover:bg-accent-start/5 active:scale-[0.97]",
     ghost:
-      "bg-transparent text-text-secondary hover:text-text-primary hover:bg-white/5 active:scale-[0.97]",
+      "bg-transparent text-text-secondary hover:text-text-primary hover:bg-hover-bg active:scale-[0.97]",
   };
 
   return (

@@ -145,7 +145,7 @@ export default function ResumeHub() {
                       <span>Enhance Application</span>
                     </button>
                 </div>
-                <div className="bg-white/5 border border-border-subtle rounded-xl p-6 h-[400px] overflow-y-auto text-sm text-text-secondary leading-relaxed font-mono whitespace-pre-wrap">
+                <div className="bg-hover-bg border border-border-subtle rounded-xl p-6 h-[400px] overflow-y-auto text-sm text-text-secondary leading-relaxed font-mono whitespace-pre-wrap">
                   {resumeText}
                 </div>
               </motion.div>
@@ -166,7 +166,7 @@ export default function ResumeHub() {
               <motion.div key="analysis" initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="space-y-6">
                 
                 {/* Total Score */}
-                <div className="card-glass p-8 bg-gradient-to-br from-white/5 to-white/2 relative overflow-hidden">
+                <div className="card-glass p-8 relative overflow-hidden">
                     <div className="flex justify-between items-end mb-8 relative z-10">
                         <div className="space-y-1">
                             <h2 className="text-sm font-bold uppercase tracking-widest text-accent-start">Analysis Complete</h2>
@@ -177,7 +177,7 @@ export default function ResumeHub() {
                     
                     <div className="grid grid-cols-2 gap-4 relative z-10">
                         {Object.entries(analysis.breakdown || {}).map(([key, val]: any) => (
-                            <div key={key} className="bg-white/5 rounded-lg p-3 border border-white/5">
+                            <div key={key} className="bg-hover-bg rounded-lg p-3 border border-border-subtle">
                                 <p className="text-[10px] text-text-secondary uppercase font-bold tracking-wider">{key}</p>
                                 <p className="text-sm font-bold">{val as string}</p>
                             </div>
@@ -185,7 +185,7 @@ export default function ResumeHub() {
                     </div>
                     
                     {/* Visual progress bar */}
-                    <div className="mt-8 h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                    <div className="mt-8 h-1.5 w-full bg-hover-bg rounded-full overflow-hidden">
                         <motion.div initial={{ width: 0 }} animate={{ width: `${analysis.totalScore}%` }} className="h-full bg-gradient-to-r from-accent-start to-accent-end" />
                     </div>
                 </div>
@@ -233,7 +233,7 @@ export default function ResumeHub() {
                     </div>
                 </motion.div>
             ) : (
-                <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-center p-8 bg-white/2 rounded-3xl border border-dashed border-border-subtle opacity-50">
+                <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-center p-8 rounded-3xl border border-dashed border-border-subtle opacity-50">
                     <FileText size={48} className="mb-4 text-text-muted" />
                     <p className="text-sm font-medium">Upload a resume to see the neural analysis score and AI enhancement options here.</p>
                 </div>

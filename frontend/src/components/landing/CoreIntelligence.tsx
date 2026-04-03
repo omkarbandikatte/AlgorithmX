@@ -43,7 +43,7 @@ const cardVariants: Variants = {
 
 export default function CoreIntelligence() {
   return (
-    <section id="features" className="relative py-24 sm:py-32">
+    <section id="features" className="relative py-14 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div
@@ -51,7 +51,7 @@ export default function CoreIntelligence() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-16"
+          className="text-center mb-10"
         >
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
             Core <span className="gradient-text">Intelligence</span>

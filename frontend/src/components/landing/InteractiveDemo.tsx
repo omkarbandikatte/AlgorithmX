@@ -1,149 +1,112 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Send, Sparkles, User } from "lucide-react";
+import { BookOpen, Brain, MessageSquare, Repeat2, Trophy } from "lucide-react";
 
-const messages = [
+const steps = [
   {
-    role: "user" as const,
-    content: "What is the difference between TCP and UDP?",
+    number: "01",
+    icon: BookOpen,
+    title: "Pick a Topic",
+    description: "Choose any subject or paste a concept you want to understand",
   },
   {
-    role: "ai" as const,
-    content:
-      "Great question! TCP (Transmission Control Protocol) is connection-oriented — it ensures reliable, ordered delivery of data. UDP (User Datagram Protocol) is connectionless — it's faster but doesn't guarantee delivery. Think of TCP as a phone call (confirmed connection) and UDP as sending a letter (fire and forget).",
+    number: "02",
+    icon: MessageSquare,
+    title: "Ask Freely",
+    description: "Ask in your own words — no rigid formats, no wrong questions",
   },
   {
-    role: "user" as const,
-    content: "When should I use UDP over TCP?",
+    number: "03",
+    icon: Brain,
+    title: "AI Adapts",
+    description: "The AI reads your level and tailors the explanation just for you",
   },
   {
-    role: "ai" as const,
-    content:
-      "Use UDP when speed matters more than reliability — like video streaming, online gaming, or DNS lookups. TCP is better for web browsing, email, and file transfers where every packet must arrive correctly.",
+    number: "04",
+    icon: Repeat2,
+    title: "Follow Up",
+    description: "Dig deeper with contextual follow-ups until it truly clicks",
+  },
+  {
+    number: "05",
+    icon: Trophy,
+    title: "Master It",
+    description: "Track progress and revisit concepts to lock in long-term retention",
   },
 ];
 
 export default function InteractiveDemo() {
   return (
-    <section id="about" className="relative py-24 sm:py-32">
+    <section id="about" className="relative py-14 sm:py-20">
       {/* Subtle background */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-accent-start/3 rounded-full blur-[160px]" />
       </div>
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-          {/* Left — Text */}
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.5 }}
-            className="space-y-6"
-          >
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
-              Experience the{" "}
-              <span className="gradient-text">Pulse</span>
-            </h2>
-            <p className="text-text-secondary text-lg leading-relaxed">
-              Our AI doesn&apos;t just answer — it understands context, adapts to your
-              level, and explains concepts the way{" "}
-              <span className="text-text-primary font-medium">you</span> learn best.
-            </p>
-            <ul className="space-y-3">
-              {[
-                "Contextual follow-up understanding",
-                "Adaptive difficulty calibration",
-                "Multi-format explanations",
-                "Step-by-step problem solving",
-              ].map((item) => (
-                <li key={item} className="flex items-center gap-3 text-sm text-text-secondary">
-                  <div className="w-5 h-5 rounded-full bg-accent-start/10 flex items-center justify-center flex-shrink-0">
-                    <div className="w-1.5 h-1.5 rounded-full bg-accent-start" />
-                  </div>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </motion.div>
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-10 space-y-4"
+        >
+          <p className="text-xs font-semibold tracking-widest uppercase text-accent-start">
+            How It Works
+          </p>
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
+            Experience the{" "}
+            <span className="gradient-text">Pulse</span>
+          </h2>
+          <p className="text-text-secondary text-lg leading-relaxed max-w-2xl mx-auto">
+            Our AI doesn&apos;t just answer — it understands context, adapts to your
+            level, and explains concepts the way{" "}
+            <span className="text-text-primary font-medium">you</span> learn best.
+          </p>
+        </motion.div>
 
-          {/* Right — Chat Demo */}
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-          >
-            <div className="glass-card overflow-hidden">
-              {/* Header */}
-              <div className="px-5 py-4 border-b border-border-subtle flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-start to-accent-end flex items-center justify-center">
-                  <Sparkles size={14} className="text-white" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-text-primary">
-                    Interactive Demo
-                  </p>
-                  <p className="text-xs text-text-secondary">
-                    AI-powered learning experience
-                  </p>
-                </div>
-              </div>
+        {/* Steps */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-8 lg:gap-4">
+          {steps.map((step, i) => {
+            const Icon = step.icon;
+            return (
+              <motion.div
+                key={step.number}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.45, delay: i * 0.08 }}
+                className="relative flex flex-col items-center text-center group"
+              >
+                {/* Connector line */}
+                {i < steps.length - 1 && (
+                  <div className="hidden lg:block absolute top-[2.6rem] left-[calc(50%+2.5rem)] right-[calc(-50%+2.5rem)] h-px bg-border-subtle" />
+                )}
 
-              {/* Messages */}
-              <div className="p-5 space-y-4 max-h-80 overflow-y-auto no-scrollbar">
-                {messages.map((msg, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.1 }}
-                    className={`flex ${
-                      msg.role === "user" ? "justify-end" : "justify-start"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2.5 max-w-[85%]">
-                      {msg.role === "ai" && (
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-accent-start to-accent-end flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <Sparkles size={12} className="text-white" />
-                        </div>
-                      )}
-                      <div
-                        className={`rounded-xl px-4 py-2.5 ${
-                          msg.role === "user"
-                            ? "bg-accent-start/10 border border-accent-start/20 rounded-br-sm"
-                            : "bg-bg-elevated border border-border-subtle rounded-bl-sm"
-                        }`}
-                      >
-                        <p className="text-sm leading-relaxed text-text-secondary">
-                          {msg.content}
-                        </p>
-                      </div>
-                      {msg.role === "user" && (
-                        <div className="w-7 h-7 rounded-lg bg-bg-elevated border border-border-subtle flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <User size={12} className="text-text-secondary" />
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+                {/* Step number */}
+                <p className="text-xs font-bold tracking-widest text-accent-start mb-3">
+                  {step.number}
+                </p>
 
-              {/* Input */}
-              <div className="px-5 py-4 border-t border-border-subtle">
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-bg-surface border border-border-subtle rounded-xl px-4 py-2.5 text-sm text-text-secondary/50">
-                    Type your question...
-                  </div>
-                  <button className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-start to-accent-end flex items-center justify-center flex-shrink-0 hover:brightness-110 transition-all cursor-pointer">
-                    <Send size={14} className="text-white" />
-                  </button>
+                {/* Icon box */}
+                <div className="w-16 h-16 rounded-2xl border border-border-subtle bg-bg-elevated flex items-center justify-center mb-4 group-hover:border-accent-start/40 group-hover:bg-accent-start/5 transition-colors duration-200">
+                  <Icon size={24} className="text-text-secondary group-hover:text-accent-start transition-colors duration-200" />
                 </div>
-              </div>
-            </div>
-          </motion.div>
+
+                {/* Title */}
+                <p className="text-sm font-semibold text-text-primary mb-1.5">
+                  {step.title}
+                </p>
+
+                {/* Description */}
+                <p className="text-xs text-text-secondary leading-relaxed">
+                  {step.description}
+                </p>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
     </section>

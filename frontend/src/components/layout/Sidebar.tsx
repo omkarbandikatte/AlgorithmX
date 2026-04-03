@@ -69,7 +69,7 @@ export default function Sidebar() {
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
                 isActive
                   ? "bg-accent-start/10 text-accent-start border border-accent-start/20"
-                  : "text-text-secondary hover:text-text-primary hover:bg-white/5 border border-transparent"
+                  : "text-text-secondary hover:text-text-primary hover:bg-hover-bg border border-transparent"
               } ${collapsed ? "justify-center" : ""}`}
               title={collapsed ? item.label : undefined}
             >
@@ -91,7 +91,7 @@ export default function Sidebar() {
       <div className="p-3 border-t border-border-subtle space-y-1">
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-white/5 transition-all duration-200 w-full cursor-pointer ${
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-hover-bg transition-all duration-200 w-full cursor-pointer ${
             collapsed ? "justify-center" : ""
           }`}
         >

@@ -6,8 +6,9 @@
 :root {
   --bg-primary: #0a0a0c;
   --bg-surface: #121216;
-  --accent-start: #f59e0b;
-  --accent-end: #fbbf24;
+  --bg-elevated: #1F2937;
+  --accent-start: #F4A261;
+  --accent-end: #F4C88A;
   --text-primary: #ffffff;
   --text-secondary: #a1a1aa;
   --text-muted: #52525b;
@@ -17,15 +18,19 @@
   --scrollbar-thumb: rgba(255, 255, 255, 0.1);
   --scrollbar-hover: rgba(255, 255, 255, 0.2);
   --input-bg: rgba(255, 255, 255, 0.05);
-  --shadow-accent: rgba(245, 158, 11, 0.2);
+  --shadow-accent: rgba(244, 162, 97, 0.2);
+  --glass-bg: rgba(17, 24, 39, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --hover-bg: rgba(255, 255, 255, 0.05);
 }
 
 /* ─── Light Theme ─── */
 [data-theme="light"] {
   --bg-primary: #f8f9fc;
   --bg-surface: #ffffff;
-  --accent-start: #d97706;
-  --accent-end: #f59e0b;
+  --bg-elevated: #F1F3F8;
+  --accent-start: #D98B4A;
+  --accent-end: #F4A261;
   --text-primary: #111827;
   --text-secondary: #6b7280;
   --text-muted: #9ca3af;
@@ -35,19 +40,26 @@
   --scrollbar-thumb: rgba(0, 0, 0, 0.12);
   --scrollbar-hover: rgba(0, 0, 0, 0.2);
   --input-bg: rgba(0, 0, 0, 0.03);
-  --shadow-accent: rgba(217, 119, 6, 0.15);
+  --shadow-accent: rgba(217, 139, 74, 0.15);
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --hover-bg: rgba(0, 0, 0, 0.04);
 }
 
 /* ─── Tailwind v4 Theme Tokens ─── */
 @theme {
   --color-bg-primary: var(--bg-primary);
   --color-bg-surface: var(--bg-surface);
+  --color-bg-elevated: var(--bg-elevated);
   --color-accent-start: var(--accent-start);
   --color-accent-end: var(--accent-end);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
   --color-border-subtle: var(--border-subtle);
+  --color-glass-bg: var(--glass-bg);
+  --color-glass-border: var(--glass-border);
+  --color-hover-bg: var(--hover-bg);
 }
 
 /* ─── Base ─── */
@@ -55,7 +67,7 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   font-family: 'Inter', 'Outfit', system-ui, sans-serif;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 ::selection {
@@ -78,7 +90,7 @@ body {
   border: 1px solid var(--card-border);
   border-radius: 1.5rem;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-  transition: background 0.3s ease, border-color 0.3s ease;
+  transition: background 0.5s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 [data-theme="light"] .card-glass {

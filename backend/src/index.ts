@@ -8,6 +8,7 @@ import admin, { db, rtdb } from './config/firebase';
 import { authMiddleware, AuthenticatedRequest } from './middleware/auth';
 import groq from './config/groq';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import interviewRoutes from './routes/ai/interview.routes';
 
 dotenv.config();
 
@@ -17,6 +18,9 @@ const port = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ limit: '20mb', extended: true }));
+
+// Mount the new AI mock interview router
+app.use('/api/ai/mock-interview', interviewRoutes);
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -213,9 +217,35 @@ app.post('/api/ai/interview/final-feedback', authMiddleware, async (req: Authent
         report: data.report || textResp,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
+
+      // Adaptive Intelligence: extract weak topics if score < 70
+      if ((data.finalScore || 0) < 70 && data.report) {
+        try {
+          const extractionChat = await groq.chat.completions.create({
+            model: 'llama-3.3-70b-versatile',
+            response_format: { type: 'json_object' },
+            messages: [
+              { role: 'system', content: 'Extract weak topics from interview feedback. Return JSON: { "weakTopics": ["topic1","topic2"] }. Max 5.' },
+              { role: 'user', content: `Score: ${data.finalScore}/100.\nReport:\n${data.report}` },
+            ],
+          });
+          const extracted = JSON.parse(extractionChat.choices[0].message.content || '{}');
+          const weakTopics: string[] = extracted.weakTopics || [];
+          if (weakTopics.length > 0) {
+            const topicList = weakTopics.slice(0, 3).join(', ');
+            const insight = `You struggled with **${topicList}**. Want to generate a focused 3-day roadmap to close these gaps?`;
+            await db.collection('users').doc(req.user!.uid).set(
+              { weakTopics: admin.firestore.FieldValue.arrayUnion(...weakTopics), lastInsight: { text: insight, score: data.finalScore, topics: weakTopics, createdAt: new Date().toISOString() } },
+              { merge: true }
+            );
+          }
+        } catch (adaptiveErr: any) {
+          console.warn('⚠️ Adaptive analysis skipped:', adaptiveErr.message);
+        }
+      }
     }
 
-    res.json({ report: data.report || textResp });
+    res.json({ report: data.report || textResp, score: data.finalScore || 0 });
   } catch (error: any) {
     console.error('❌ Final Report Error:', error.message);
     res.status(500).json({ error: 'Report failed' });
@@ -311,6 +341,156 @@ app.post('/api/ai/voice-command', authMiddleware, async (req: AuthenticatedReque
   } catch (error: any) {
     console.error('❌ Groq Voice Error:', error.message);
     res.status(500).json({ error: 'Voice intent mapping failed' });
+  }
+});
+
+// ──────────────────────────────────────────────
+// Adaptive Intelligence Dashboard
+// ──────────────────────────────────────────────
+
+// GET /api/dashboard-data — Aggregated user profile for Neural Dashboard
+app.get('/api/dashboard-data', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  if (!db) return res.status(500).json({ error: 'DB not initialized' });
+  try {
+    const uid = req.user!.uid;
+    const [interviewsSnap, resumesSnap, profileSnap] = await Promise.all([
+      db.collection('users').doc(uid).collection('interviews').orderBy('createdAt', 'desc').limit(10).get(),
+      db.collection('users').doc(uid).collection('resumes').orderBy('createdAt', 'desc').limit(1).get(),
+      db.collection('users').doc(uid).get(),
+    ]);
+
+    const interviews = interviewsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+    const latestResume = resumesSnap.docs[0]?.data() || null;
+    const profile = profileSnap.data() || {};
+
+    const interviewScores: number[] = interviews.map((i: any) => i.score || 0);
+    const avgInterviewScore = interviewScores.length
+      ? Math.round(interviewScores.reduce((a, b) => a + b, 0) / interviewScores.length)
+      : 0;
+
+    // Roadmap progress from profile doc
+    const roadmapProgress = profile.roadmapProgress || { completed: 0, total: 0 };
+    const roadmapPct = roadmapProgress.total > 0
+      ? Math.round((roadmapProgress.completed / roadmapProgress.total) * 100)
+      : 0;
+
+    // Doubt solver usage (stored as count in profile)
+    const doubtSolverScore = Math.min(100, (profile.doubtSolverCount || 0) * 5);
+
+    const radarData = {
+      resumeScore: latestResume?.totalScore || 0,
+      interviewScore: avgInterviewScore,
+      roadmapScore: roadmapPct,
+      doubtSolverScore,
+    };
+
+    res.json({
+      radarData,
+      interviews: interviews.slice(0, 6),
+      latestResume,
+      roadmapProgress,
+      weakTopics: profile.weakTopics || [],
+      lastInsight: profile.lastInsight || null,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to fetch dashboard data', details: error.message });
+  }
+});
+
+// POST /api/analyze-interview — Parse interview report for weak topics & trigger AI insight
+app.post('/api/analyze-interview', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  if (!db) return res.status(500).json({ error: 'DB not initialized' });
+  const { score, report } = req.body;
+  if (score === undefined || !report) return res.status(400).json({ error: 'score and report are required' });
+
+  try {
+    const uid = req.user!.uid;
+
+    // Extract weak topics via LLM
+    const extractionChat = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a career coach AI. Extract weak topics from interview feedback. Return JSON: { "weakTopics": ["topic1", "topic2"], "strongTopics": ["topic3"] }. Maximum 5 topics each.',
+        },
+        { role: 'user', content: `Interview score: ${score}/100.\n\nFeedback report:\n${report}` },
+      ],
+    });
+
+    const extracted = JSON.parse(extractionChat.choices[0].message.content || '{}');
+    const weakTopics: string[] = extracted.weakTopics || [];
+
+    // Build AI insight if score < 70
+    let insight: string | null = null;
+    if (score < 70 && weakTopics.length > 0) {
+      const topicList = weakTopics.slice(0, 3).join(', ');
+      insight = `You struggled with **${topicList}**. Want to generate a focused 3-day roadmap to close these gaps?`;
+    }
+
+    // Persist to user profile
+    await db.collection('users').doc(uid).set(
+      {
+        weakTopics: admin.firestore.FieldValue.arrayUnion(...weakTopics),
+        ...(insight ? { lastInsight: { text: insight, score, topics: weakTopics, createdAt: new Date().toISOString() } } : {}),
+      },
+      { merge: true }
+    );
+
+    res.json({ weakTopics, insight });
+  } catch (error: any) {
+    console.error('❌ Analyze Interview Error:', error.message);
+    res.status(500).json({ error: 'Analysis failed', details: error.message });
+  }
+});
+
+// POST /api/generate-micro-roadmap — AI-generated 3-5 step personal roadmap
+app.post('/api/generate-micro-roadmap', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  const { topics } = req.body;
+  if (!topics || !topics.length) return res.status(400).json({ error: 'topics array is required' });
+
+  try {
+    const topicList = Array.isArray(topics) ? topics.slice(0, 3).join(', ') : topics;
+
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash-lite',
+      generationConfig: { responseMimeType: 'application/json' },
+    });
+
+    const prompt = `
+      You are a senior software engineering mentor.
+      Create a focused 3-day micro learning roadmap for a developer who needs to improve: "${topicList}".
+      
+      Return strictly this JSON (no markdown wrapper):
+      {
+        "title": "3-Day [topic] Intensive",
+        "steps": [
+          {
+            "day": 1,
+            "title": "Step title",
+            "tasks": ["Task 1", "Task 2", "Task 3"],
+            "resource": "A specific free resource (YouTube channel, docs page, etc.)"
+          }
+        ]
+      }
+      
+      Rules:
+      - Exactly 3 days (steps)
+      - 2-3 tasks per day
+      - Practical, actionable tasks
+      - Steps must build on each other
+    `;
+
+    const result = await model.generateContent(prompt);
+    const text = (await result.response).text().trim();
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const roadmap = JSON.parse(jsonMatch ? jsonMatch[0] : text);
+
+    res.json(roadmap);
+  } catch (error: any) {
+    console.error('❌ Micro Roadmap Error:', error.message);
+    res.status(500).json({ error: 'Roadmap generation failed', details: error.message });
   }
 });
 

@@ -135,7 +135,7 @@ export default function VoiceConcierge() {
               <Mic className="text-white" />
           )}
           
-          <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="absolute inset-0 bg-hover-bg opacity-0 group-hover:opacity-100 transition-opacity" />
           
           {/* Animated rings for listening state */}
           {isListening && (
