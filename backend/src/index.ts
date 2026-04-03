@@ -48,8 +48,16 @@ app.post('/api/ai/roadmap', authMiddleware, async (req: AuthenticatedRequest, re
       Requirements: 6-10 nodes, strict dependency graph, beginner to advanced.
     `;
 
-    const result = await model.generateContent(prompt);
-    const text = (await result.response).text().trim();
+    const chat = await groq.chat.completions.create({
+      messages: [
+          { role: "system", content: "You strictly output JSON." },
+          { role: "user", content: prompt }
+      ],
+      model: "llama-3.3-70b-versatile",
+      response_format: { type: "json_object" }
+    });
+
+    const text = chat.choices[0].message?.content || '{}';
 
     console.log("🎨 RAW Response Captured.");
 
@@ -90,95 +98,35 @@ app.post('/api/ai/doubt-solver', authMiddleware, upload.single('file'), async (r
   const file = req.file;
 
   try {
-    let finalQuery = query || "Explain this in detail.";
-    let answer = "";
-
-    if (file && file.mimetype.startsWith('image/')) {
-        const base64_img = file.buffer.toString('base64');
-        const chat = await groq.chat.completions.create({
-            model: "llama-3.2-11b-vision-preview",
-            messages: [
-                {
-                    role: "user",
-                    // @ts-ignore
-                    content: [
-                        { type: "text", text: finalQuery },
-                        { type: "image_url", image_url: { url: `data:${file.mimetype};base64,${base64_img}` } },
-                    ],
-                },
-            ]
-        });
-        answer = chat.choices[0].message.content || "";
-    } else if (file && file.mimetype.startsWith('audio/')) {
-        const fs = require('fs');
-        const os = require('os');
-        const path = require('path');
-        const tempFilePath = path.join(os.tmpdir(), `audio-${Date.now()}.webm`);
-        fs.writeFileSync(tempFilePath, file.buffer);
-        
-        try {
-            const transcription = await groq.audio.transcriptions.create({
-                file: fs.createReadStream(tempFilePath),
-                model: "whisper-large-v3",
-            });
-            finalQuery = `Transcribed audio query: "${transcription.text}".\n\nAdditional context: ${finalQuery}`;
-        } finally {
-            fs.unlinkSync(tempFilePath);
-        }
-        
-        const chat = await groq.chat.completions.create({
-            model: "llama-3.3-70b-versatile",
-            messages: [{ role: "user", content: finalQuery }]
-        });
-        answer = chat.choices[0].message.content || "";
-    } else {
-        const chat = await groq.chat.completions.create({
-            model: "llama-3.3-70b-versatile",
-            messages: [{ role: "user", content: finalQuery }]
-        });
-        answer = chat.choices[0].message.content || "";
+    const content: any[] = [{ type: "text", text: query || "Explain this in detail." }];
+    
+    if (file) {
+      const base64Image = file.buffer.toString('base64');
+      content.push({
+        type: "image_url",
+        image_url: { url: `data:${file.mimetype};base64,${base64Image}` }
+      });
     }
 
-    res.json({ answer });
+    const chat = await groq.chat.completions.create({
+      messages: [{ role: "user", content }],
+      model: "llama-3.2-11b-vision-preview"
+    });
+
+    res.json({ answer: chat.choices[0].message?.content || '' });
   } catch (error: any) {
     console.error('❌ Doubt Solver Error:', error.message);
     res.status(500).json({ error: 'Doubt solver failed.' });
   }
 });
 
+import interviewRoutes from './routes/ai/interview.routes';
+
 // ──────────────────────────────────────────────
-// Interview Turn logic
+// Interview Suite (Groq Modular)
 // ──────────────────────────────────────────────
 
-app.post('/api/ai/interview/turn', authMiddleware, upload.fields([{ name: 'audio' }, { name: 'frame' }]), async (req: AuthenticatedRequest, res: Response) => {
-  const { resumeText, jobDescription, history = "[]" } = req.body;
-  const files = req.files as any;
-
-  try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash-lite",
-      generationConfig: { responseMimeType: "application/json" }
-    });
-
-    const parts: any[] = [{ text: `AI Interviewer system prompt. Resume: ${resumeText}. History: ${history}. Analyze turn and return JSON: { "nextQuestion": "text", "proctoringScore": number, "proctoringFeedback": "string" }` }];
-
-    if (files.audio?.[0]) parts.push({ inlineData: { data: files.audio[0].buffer.toString('base64'), mimeType: files.audio[0].mimetype } });
-    if (files.frame?.[0]) parts.push({ inlineData: { data: files.frame[0].buffer.toString('base64'), mimeType: files.frame[0].mimetype } });
-
-    const result = await model.generateContent(parts);
-    const textResp = (await result.response).text().trim();
-    if (!textResp) throw new Error("Empty gemini response on interview turn");
-
-    // Safety check for json formatting if the SDK response is weird
-    const jsonMatch = textResp.match(/\{[\s\S]*\}/);
-    const parseableText = jsonMatch ? jsonMatch[0] : textResp;
-
-    res.json(JSON.parse(parseableText));
-  } catch (error: any) {
-    console.error('❌ Interview Turn Error:', error.message);
-    res.status(500).json({ error: 'Interview turn failed' });
-  }
-});
+app.use('/api/ai/interview', interviewRoutes);
 
 app.post('/api/ai/interview/final-feedback', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   const { sessionHistory } = req.body;
