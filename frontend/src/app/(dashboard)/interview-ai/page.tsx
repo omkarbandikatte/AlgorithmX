@@ -156,7 +156,7 @@ export default function MockInterview() {
       });
 
       const userText = transcriptionRes.text || "Could not transcribe audio.";
-      alert("✅ Response Saved! Extracting Insights...");
+      console.log("✅ Response Saved! Extracting Insights...");
 
       // 2. Evaluate
       const evaluationRes = await call("/api/ai/interview/evaluate", {
@@ -180,7 +180,7 @@ export default function MockInterview() {
 
     } catch (err) {
       console.error("Pipeline error:", err);
-      alert("Pipeline Error: Failed to evaluate response.");
+      console.error("Pipeline Error: Failed to evaluate response.");
     } finally {
       setIsEvaluating(false);
     }
@@ -203,7 +203,18 @@ export default function MockInterview() {
   if (showSummary) {
       const responsesArray = Object.values(responses);
       const totalScore = responsesArray.reduce((acc, r) => acc + (r.score || 0), 0);
-      const avgScore = responsesArray.length ? Math.round(totalScore / questions.length) : 0;
+      const avgScore = responsesArray.length ? (totalScore / questions.length) : 0;
+      const percentage = Math.round(avgScore * 10);
+      
+      let performanceMessage = "Needs Improvement";
+      let performanceColor = "text-red-400";
+      if (percentage >= 80) {
+          performanceMessage = "Excellent";
+          performanceColor = "text-green-400";
+      } else if (percentage >= 60) {
+          performanceMessage = "Good";
+          performanceColor = "text-yellow-400";
+      }
       
       return (
         <div className="flex flex-col space-y-6 pb-24">
@@ -214,11 +225,14 @@ export default function MockInterview() {
             
             <div className="flex items-center gap-6 mb-2 p-6 card-glass border-border-subtle bg-white/5 rounded-2xl animate-fade-in-up">
                 <div className="w-24 h-24 rounded-[30px] bg-gradient-to-br from-accent-start to-accent-end flex items-center justify-center shadow-[0_0_40px_rgba(99,102,241,0.3)] shrink-0">
-                    <span className="text-4xl font-black text-white">{avgScore}/10</span>
+                    <span className="text-3xl font-black text-white">{percentage}%</span>
                 </div>
                 <div>
                      <h2 className="text-2xl font-bold">Session Complete</h2>
                      <p className="text-text-secondary mt-1 text-sm">Overall algorithmic rating across all {questions.length} questions.</p>
+                     <p className={`mt-2 font-bold uppercase tracking-widest text-xs ${performanceColor}`}>
+                         Performance: {performanceMessage}
+                     </p>
                 </div>
             </div>
             
@@ -255,13 +269,28 @@ export default function MockInterview() {
                         </div>
                     )})}
                 </div>
-                <button className="btn-primary w-full mt-8" onClick={() => { setQuestions([]); setShowSummary(false); setResponses({}); }}>Return to Hub</button>
+                <div className="flex flex-col md:flex-row gap-4 mt-8">
+                    <button 
+                        className="btn-primary flex-1 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold py-4 rounded-xl hover:scale-[1.02] transition-all cursor-pointer shadow-[0_0_20px_rgba(249,115,22,0.3)] border-none" 
+                        onClick={startSetup}
+                    >
+                        Retake Interview
+                    </button>
+                    <button 
+                        className="btn-primary flex-1 py-4 text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all cursor-pointer border border-white/10" 
+                        onClick={() => { setQuestions([]); setShowSummary(false); setResponses({}); }}
+                    >
+                        Return to Hub
+                    </button>
+                </div>
             </div>
         </div>
       );
   }
 
   if (questions.length > 0) {
+      const progressPercent = ((currentIndex) / questions.length) * 100;
+
       return (
           <div className="fixed inset-0 z-50 bg-black flex flex-col font-sans animate-fade-in">
               {/* Full Background Video */}
@@ -275,6 +304,11 @@ export default function MockInterview() {
               
               {/* Overlay Gradient for Readability */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/80 pointer-events-none" />
+
+              {/* Progress Bar */}
+              <div className="absolute top-0 left-0 h-[6px] w-full bg-white/10 z-20 overflow-hidden">
+                  <div className="h-full bg-accent-start transition-all duration-500 ease-out shadow-[0_0_15px_inherit]" style={{ width: `${progressPercent}%` }} />
+              </div>
 
               {/* Question Overlay (Top) */}
               <div className="relative z-10 p-8 pt-12 flex flex-col items-center">
@@ -367,14 +401,22 @@ export default function MockInterview() {
                  <label className="text-xs font-bold uppercase tracking-widest text-text-muted mb-2 block">Tech Stack</label>
                  <input type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent-start/50" value={setupData.techStack} onChange={(e) => setSetupData({...setupData, techStack: e.target.value})} />
                </div>
+               <div>
+                 <label className="text-xs font-bold uppercase tracking-widest text-text-muted mb-2 block">Years of Experience</label>
+                 <input type="number" min="0" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent-start/50" value={setupData.experience} onChange={(e) => setSetupData({...setupData, experience: parseInt(e.target.value) || 0})} />
+               </div>
              </div>
   
              <button 
-               className="btn-primary w-full py-4 text-base" 
+               className="w-full py-4 text-white text-base bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl transition-all duration-300 hover:scale-[1.02] hover:brightness-110 active:scale-95 shadow-[0_0_20px_rgba(249,115,22,0.3)] font-bold cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed" 
                onClick={startSetup}
                disabled={isSynthesizing}
              >
-                {isSynthesizing ? <Loader2 className="animate-spin mx-auto" /> : "Initiate Interview"}
+                {isSynthesizing ? (
+                    <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="animate-spin" size={20} /> Generating Questions...
+                    </span>
+                ) : "Initiate Interview"}
              </button>
           </div>
 

@@ -22,6 +22,11 @@ export const generateQuestionsService = async (role: string, stack: string, exp:
     Tech Stack: ${stack}
     Experience: ${exp} years
 
+    Rules:
+    - If Experience is 0, generate beginner level questions.
+    - If Experience is 1-3, generate moderate level questions.
+    - If Experience is strictly greater than 3, generate advanced/system design questions.
+
     Return ONLY valid JSON:
     {
       "questions": ["q1", "q2", "q3", "q4", "q5"]
