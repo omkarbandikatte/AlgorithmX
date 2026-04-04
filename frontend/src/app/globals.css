@@ -46,7 +46,7 @@
   --color-glass-border: var(--glass-border);
   --color-glow-orange: var(--glow-orange);
   --color-hover-bg: var(--hover-bg);
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: var(--font-inter), var(--font-devanagari), 'Noto Sans Devanagari', system-ui, -apple-system, sans-serif;
 }
 
 * {

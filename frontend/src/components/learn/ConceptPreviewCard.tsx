@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
+import "@/i18n";
 import { CheckCircle, Play, Clock, Youtube } from "lucide-react";
 import Image from "next/image";
 
@@ -20,6 +22,7 @@ interface Props {
 
 export function ConceptPreviewCard({ concept, onPreview }: Props) {
   const [isLearned, setIsLearned] = useState(false);
+  const { t } = useTranslation();
 
   const handleToggleLearned = (e: React.MouseEvent) => {
     e.stopPropagation(); // Hit learned vs open preview
@@ -80,11 +83,11 @@ export function ConceptPreviewCard({ concept, onPreview }: Props) {
             }`}
           >
             <CheckCircle size={14} className={isLearned ? "text-green-400" : "opacity-50"} />
-            {isLearned ? "Mastered" : "Mark as Learned"}
+            {isLearned ? t("learn.mastered") : t("learn.markAsLearned")}
           </button>
           
           <button className="flex items-center gap-1.5 text-xs font-black text-[#F97316] bg-[#F97316]/10 px-3 py-1.5 rounded-full hover:bg-[#F97316] hover:text-white transition-all shadow-[0_0_15px_rgba(249,115,22,0.15)] group-hover:shadow-[0_0_20px_rgba(249,115,22,0.4)]">
-             <Youtube size={14} /> Preview
+             <Youtube size={14} /> {t("learn.preview")}
           </button>
         </div>
       </div>

@@ -13,14 +13,20 @@ import {
   Trash2,
   Bot,
   MessageCircle,
-  Video
+  Video,
+  X
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
+import { useLanguage } from "@/context/LanguageContext";
+import { useTranslation } from "react-i18next";
+import "@/i18n";
 
 export default function DoubtSolver() {
   const { call } = useApi();
   const searchParams = useSearchParams();
+  const { language } = useLanguage();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"chat" | "talk">("chat");
   const [query, setQuery] = useState("");
   
@@ -58,6 +64,7 @@ export default function DoubtSolver() {
 
     const formData = new FormData();
     formData.append("query", currentQuery);
+    formData.append("language", language);
     if (currentFile) {
         formData.append("file", currentFile);
     }
@@ -91,8 +98,8 @@ export default function DoubtSolver() {
       {/* Tab Switcher & Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 shrink-0">
           <div className="space-y-1">
-              <h1 className="text-3xl font-bold tracking-tight">Doubt <span className="gradient-text">Assistance</span></h1>
-              <p className="text-text-secondary text-sm">Switch between neural chat solving and real-time voice talk.</p>
+              <h1 className="text-3xl font-bold tracking-tight">{t("doubt.title").split(" ")[0]} <span className="gradient-text">{t("doubt.title").split(" ").slice(1).join(" ")}</span></h1>
+              <p className="text-text-secondary text-sm">{t("doubt.subtitle")}</p>
           </div>
           
           <div className="flex items-center gap-1 p-1 bg-hover-bg rounded-2xl border border-border-subtle backdrop-blur-xl">
@@ -103,7 +110,7 @@ export default function DoubtSolver() {
                 }`}
               >
                   <MessageCircle size={16} />
-                  <span>Interactive Chat</span>
+                  <span>{t("doubt.chatTab")}</span>
               </button>
               <button 
                 onClick={() => setActiveTab("talk")}
@@ -112,7 +119,7 @@ export default function DoubtSolver() {
                 }`}
               >
                   <Video size={16} />
-                  <span>Real-time Talk</span>
+                  <span>{t("doubt.talkTab")}</span>
               </button>
           </div>
       </div>
@@ -125,8 +132,8 @@ export default function DoubtSolver() {
                     {messages.length === 0 && (
                         <div className="h-full flex flex-col items-center justify-center text-center max-w-sm mx-auto space-y-4 opacity-50">
                             <Bot size={56} className="text-accent-start" />
-                            <p className="text-lg font-bold">Expert Neural Solver.</p>
-                            <p className="text-sm italic">"Ask me about complex algorithms, math equations via image, or voice notes."</p>
+                            <p className="text-lg font-bold">{t("doubt.emptyState")}</p>
+                            <p className="text-sm italic">{t("doubt.emptyHint")}</p>
                         </div>
                     )}
                     
@@ -145,7 +152,7 @@ export default function DoubtSolver() {
                                     {msg.file && (
                                         <div className="mb-3 px-3 py-2 bg-black/20 rounded-lg flex items-center gap-2 text-[10px] uppercase font-black text-accent-start italic">
                                             {msg.file.type === "image" ? <ImageIcon size={14}/> : <Mic size={14}/>}
-                                            ATTACHED: {msg.file.name}
+                                            {t("doubt.attached")}: {msg.file.name}
                                         </div>
                                     )}
                                     <div className="whitespace-pre-wrap">{msg.content}</div>
@@ -159,7 +166,7 @@ export default function DoubtSolver() {
                     {isLoading && (
                         <div className="flex items-center gap-3 animate-pulse">
                             <div className="w-8 h-8 rounded-lg bg-hover-bg flex items-center justify-center text-accent-start"><Sparkles size={20}/></div>
-                            <span className="text-[10px] uppercase font-black tracking-widest text-text-muted">AI Synthesis in progress...</span>
+                            <span className="text-[10px] uppercase font-black tracking-widest text-text-muted">{t("doubt.aiProcessing")}</span>
                         </div>
                     )}
                 </div>
@@ -180,7 +187,7 @@ export default function DoubtSolver() {
                 </AnimatePresence>
                 <form onSubmit={handleSend} className="flex items-center p-3 gap-2">
                     <button type="button" onClick={() => fileRef.current?.click()} className="p-3 text-text-muted hover:text-accent-start transition-all hover:bg-hover-bg rounded-xl"><Paperclip size={22} /></button>
-                    <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Submit your doubt or attach an image..." className="flex-1 bg-transparent border-none py-3 px-2 text-sm focus:outline-none" />
+                    <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("doubt.placeholder")} className="flex-1 bg-transparent border-none py-3 px-2 text-sm focus:outline-none" />
                     <button className={`p-4 rounded-xl shadow-xl transition-all ${query || file ? "bg-accent-start text-white hover:bg-accent-end" : "bg-hover-bg text-text-muted"}`}>
                         <Send size={22} />
                     </button>
@@ -206,14 +213,5 @@ export default function DoubtSolver() {
       )}
 
     </div>
-  );
-}
-
-function X({ size, className }: any) {
-  return (
-    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 6 6 18" />
-      <path d="m6 6 12 12" />
-    </svg>
   );
 }

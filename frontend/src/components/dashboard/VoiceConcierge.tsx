@@ -5,6 +5,9 @@ import { Mic, MicOff, Loader2, Sparkles, X, Volume2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApi } from "@/hooks/useApi";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/context/LanguageContext";
+import { useTranslation } from "react-i18next";
+import "@/i18n";
 
 // Speech Recognition Type (Web Speech API)
 declare global {
@@ -16,6 +19,8 @@ declare global {
 export default function VoiceConcierge() {
   const { call } = useApi();
   const router = useRouter();
+  const { language } = useLanguage();
+  const { t } = useTranslation();
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -27,15 +32,15 @@ export default function VoiceConcierge() {
       return;
     }
 
-    const recognition = new window.webkitSpeechRecognition();
+    const recognition = new (window as any).webkitSpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = false;
-    recognition.lang = "en-US";
+    recognition.lang = language;
 
     recognition.onstart = () => {
       setIsListening(true);
       setTranscript("");
-      setFeedback("Listening...");
+      setFeedback(t("voice.listening"));
     };
 
     recognition.onresult = (event: any) => {
@@ -46,7 +51,7 @@ export default function VoiceConcierge() {
 
     recognition.onerror = () => {
       setIsListening(false);
-      setFeedback("Error occurred.");
+      setFeedback(t("voice.error"));
     };
 
     recognition.onend = () => {
@@ -58,18 +63,24 @@ export default function VoiceConcierge() {
 
   const handleVoiceCommand = async (text: string) => {
     setIsProcessing(true);
-    setFeedback("Thinking...");
+    setFeedback(t("voice.thinking"));
     
     try {
       const action = await call("/api/ai/voice-command", {
         method: "POST",
-        body: JSON.stringify({ prompt: text })
+        body: JSON.stringify({ prompt: text, language })
       });
 
       setFeedback(action.speech);
       
       // AI Voice Feedback (TTS)
       const utterance = new SpeechSynthesisUtterance(action.speech);
+      utterance.lang = language;
+      const voices = window.speechSynthesis.getVoices();
+      const langVoice = voices.find(v => v.lang.startsWith(language.split('-')[0]));
+      if (langVoice) {
+         utterance.voice = langVoice;
+      }
       window.speechSynthesis.speak(utterance);
 
       // Execute Action
@@ -89,7 +100,7 @@ export default function VoiceConcierge() {
 
       setTimeout(() => setFeedback(""), 4000);
     } catch (err) {
-      setFeedback("Sorry, I couldn't interpret that command.");
+      setFeedback(t("voice.error"));
     } finally {
       setIsProcessing(false);
     }
@@ -108,7 +119,7 @@ export default function VoiceConcierge() {
                 className="card-glass p-4 max-w-xs mb-2 border-accent-start/30 shadow-[0_0_40px_rgba(255,107,0,0.2)]"
               >
                   <p className="text-[10px] uppercase font-black tracking-widest text-accent-start mb-1 flex items-center gap-2">
-                    {isProcessing ? "Processing Response" : isListening ? "Recognized Text" : "Voice Feedback"}
+                    {isProcessing ? t("voice.processing") : isListening ? t("voice.recognized") : t("voice.feedback")}
                   </p>
                   <p className="text-sm font-bold text-text-primary leading-snug">
                     {feedback || transcript}

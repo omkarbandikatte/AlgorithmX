@@ -4,8 +4,8 @@ import fs from 'fs';
 
 export const generateQuestions = async (req: Request, res: Response) => {
   try {
-    const { role, techStack, experience } = req.body;
-    const data = await service.generateQuestionsService(role, techStack, experience);
+    const { role, techStack, experience, language } = req.body;
+    const data = await service.generateQuestionsService(role, techStack, experience, language);
     res.json(data);
   } catch (err: any) {
     console.error('generateQuestions error:', err);
@@ -16,20 +16,20 @@ export const generateQuestions = async (req: Request, res: Response) => {
 export const transcribeAudio = async (req: Request, res: Response) => {
   try {
     if (!req.file) {
-       return res.status(400).json({ error: "No audio file provided" });
+      return res.status(400).json({ error: "No audio file provided" });
     }
-    
+
     // Add extension so Whisper API can infer correct MIME type
     const originalPath = req.file.path;
     const pathWithExt = originalPath + ".webm";
     fs.renameSync(originalPath, pathWithExt);
-    
+
     // Leverage Groq Whisper via service
     const transcript = await service.transcribeAudioService(pathWithExt);
-    
+
     // Cleanup temp file uploaded by multer
     if (fs.existsSync(pathWithExt)) {
-       fs.unlinkSync(pathWithExt);
+      fs.unlinkSync(pathWithExt);
     }
 
     res.json({ text: transcript });
@@ -45,8 +45,8 @@ export const transcribeAudio = async (req: Request, res: Response) => {
 
 export const evaluateAnswer = async (req: Request, res: Response) => {
   try {
-    const { question, userAnswer } = req.body;
-    const data = await service.evaluateAnswerService(question, userAnswer);
+    const { question, userAnswer, language } = req.body;
+    const data = await service.evaluateAnswerService(question, userAnswer, language);
     res.json(data);
   } catch (err: any) {
     console.error('evaluateAnswer error:', err);

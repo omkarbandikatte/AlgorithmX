@@ -18,7 +18,7 @@ const parseJSON = (text) => {
         return { score: 0, feedback: "Error processing feedback.", idealAnswer: "Error processing answer." };
     }
 };
-const generateQuestionsService = async (role, stack, exp) => {
+const generateQuestionsService = async (role, stack, exp, language = "en-US") => {
     const prompt = `
     You are an expert interviewer.
 
@@ -26,11 +26,13 @@ const generateQuestionsService = async (role, stack, exp) => {
     Role: ${role}
     Tech Stack: ${stack}
     Experience: ${exp} years
+    Language: The generated text MUST be strictly in ${language} language code.
 
     Rules:
     - If Experience is 0, generate beginner level questions.
     - If Experience is 1-3, generate moderate level questions.
     - If Experience is strictly greater than 3, generate advanced/system design questions.
+    - Please make sure the output JSON object keys are strictly exactly 'questions' regardless of language. The array values MUST be translated to ${language}.
 
     Return ONLY valid JSON:
     {
@@ -64,12 +66,13 @@ const transcribeAudioService = async (filePath) => {
     return completion.text;
 };
 exports.transcribeAudioService = transcribeAudioService;
-const evaluateAnswerService = async (question, userAnswer) => {
+const evaluateAnswerService = async (question, userAnswer, language = "en-US") => {
     const prompt = `
     You are an expert technical interviewer.
     
     IMPORTANT: You MUST identify the language of the Candidate Answer (e.g. English, Urdu, Hindi, Spanish). 
-    Your feedback, recommendations, AND the idealAnswer MUST be provided entirely in the EXACT SAME LANGUAGE as the Candidate Answer.
+    Your feedback, recommendations, AND the idealAnswer MUST be provided entirely in the EXACT SAME LANGUAGE as the Candidate Answer and the target language: ${language}.
+    Ensure your JSON response contains ONLY perfectly translated values for the defined keys.
 
     Question:
     ${question}
@@ -80,8 +83,8 @@ const evaluateAnswerService = async (question, userAnswer) => {
     Evaluate the answer out of 10. You MUST respond with ONLY a raw JSON object and nothing else.
     {
       "score": <number>,
-      "feedback": "<detailed feedback in the candidate's spoken language>",
-      "idealAnswer": "<perfect answer in the candidate's spoken language>"
+      "feedback": "<detailed feedback in ${language}>",
+      "idealAnswer": "<perfect answer in ${language}>"
     }
   `;
     const completion = await groq_1.default.chat.completions.create({

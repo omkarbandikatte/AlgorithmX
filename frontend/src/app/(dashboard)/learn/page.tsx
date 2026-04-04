@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import "@/i18n";
 import { ConceptPreviewCard, Concept } from "@/components/learn/ConceptPreviewCard";
-import { X, PlayCircle, LogOut, Youtube, Search } from "lucide-react";
+import { X, PlayCircle, Youtube, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 
@@ -43,25 +45,39 @@ const conceptsData: Concept[] = [
 export default function LearnConcepts() {
   const [selectedConcept, setSelectedConcept] = useState<Concept | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const { t } = useTranslation();
+
+  const categories = useMemo(() => {
+    const order = ["React", "Next.js", "Node.js", "TypeScript", "Backend", "Database", "CSS", "DevOps", "Security", "Testing", "Tools", "Web"];
+    const map: Record<string, Concept[]> = {};
+    conceptsData.forEach((c) => {
+      if (!map[c.category]) map[c.category] = [];
+      map[c.category].push(c);
+    });
+    return order.filter((cat) => map[cat]).map((cat) => ({ name: cat, concepts: map[cat] }));
+  }, []);
 
   const filteredConcepts = useMemo(() => {
-    if (!searchQuery.trim()) return conceptsData;
+    if (!searchQuery.trim()) return null;
     const query = searchQuery.toLowerCase();
     return conceptsData.filter(
-      (concept) =>
-        concept.title.toLowerCase().includes(query) ||
-        concept.description.toLowerCase().includes(query) ||
-        concept.category.toLowerCase().includes(query)
+      (c) =>
+        c.title.toLowerCase().includes(query) ||
+        c.description.toLowerCase().includes(query) ||
+        c.category.toLowerCase().includes(query)
     );
   }, [searchQuery]);
 
-  // Automatically opens the YouTube video after reading the modal
   const handleMasterConcept = () => {
     if (selectedConcept) {
       window.open(`https://www.youtube.com/watch?v=${selectedConcept.videoId}`, "_blank");
-      console.log(`[Analytics] Started playing: ${selectedConcept.title}`);
     }
   };
+
+  const visibleCategories = activeCategory
+    ? categories.filter((c) => c.name === activeCategory)
+    : categories;
 
   return (
     <div className="h-full flex flex-col max-w-7xl mx-auto space-y-8 animate-in slide-in-from-bottom-8 duration-500 py-6 pr-4">
@@ -74,8 +90,8 @@ export default function LearnConcepts() {
                     <PlayCircle size={28} />
                 </div>
                 <div>
-                  <h1 className="text-3xl sm:text-4xl font-black">Learn Concepts</h1>
-                  <p className="text-text-secondary text-sm mt-1">A curated library of essential software engineering concepts.</p>
+                  <h1 className="text-3xl sm:text-4xl font-black">{t("learn.title")}</h1>
+                  <p className="text-text-secondary text-sm mt-1">{t("learn.subtitle")}</p>
                 </div>
             </div>
             
@@ -86,31 +102,94 @@ export default function LearnConcepts() {
               </div>
               <input
                 type="text"
-                placeholder="Search by title, topic, or description..."
+                placeholder={t("learn.searchPlaceholder")}
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { setSearchQuery(e.target.value); setActiveCategory(null); }}
                 className="w-full pl-11 pr-4 py-3 border border-border-subtle rounded-xl bg-bg-surface/40 hover:bg-bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-[#F97316]/50 placeholder:text-text-secondary/50 transition-colors shadow-sm"
               />
             </div>
           </div>
+
+          {/* Category Filter Pills */}
+          {!searchQuery && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              <button
+                onClick={() => setActiveCategory(null)}
+                className={`px-4 py-1.5 rounded-full text-sm font-semibold border transition-all ${
+                  activeCategory === null
+                    ? "bg-[#F97316] text-white border-[#F97316] shadow-[0_0_12px_rgba(249,115,22,0.35)]"
+                    : "border-border-subtle text-text-secondary hover:border-[#F97316]/60 hover:text-text-primary"
+                }`}
+              >
+                All
+              </button>
+              {categories.map((cat) => (
+                <button
+                  key={cat.name}
+                  onClick={() => setActiveCategory(cat.name === activeCategory ? null : cat.name)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-semibold border transition-all ${
+                    activeCategory === cat.name
+                      ? "bg-[#F97316] text-white border-[#F97316]"
+                      : "border-border-subtle text-text-secondary hover:border-[#F97316]/60 hover:text-text-primary"
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          )}
       </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
-         {filteredConcepts.length > 0 ? (
-           filteredConcepts.map(concept => (
-              <ConceptPreviewCard 
-                key={concept.id} 
-                concept={concept}
-                onPreview={setSelectedConcept}
-              />
-           ))
-         ) : (
-           <div className="col-span-full py-12 text-center text-text-secondary border border-dashed border-border-subtle rounded-2xl bg-bg-surface/50">
-             <p>No concepts found matching "{searchQuery}". Try a different keyword.</p>
-           </div>
-         )}
-      </div>
+      {/* Search Results (flat) */}
+      {filteredConcepts !== null ? (
+        <div className="pb-20">
+          {filteredConcepts.length > 0 ? (
+            <>
+              <p className="text-sm text-text-secondary mb-4">{filteredConcepts.length} result{filteredConcepts.length !== 1 ? "s" : ""} for &quot;{searchQuery}&quot;</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredConcepts.map((concept) => (
+                  <ConceptPreviewCard key={concept.id} concept={concept} onPreview={setSelectedConcept} />
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="py-12 text-center text-text-secondary border border-dashed border-border-subtle rounded-2xl bg-bg-surface/50">
+              <p>{t("learn.noResults", { query: searchQuery })}</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Category Sections */
+        <div className="space-y-14 pb-20">
+          {visibleCategories.map((cat) => (
+            <motion.section key={cat.name} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+              {/* Section Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-1 h-6 bg-[#F97316] rounded-full" />
+                  <h2 className="text-lg font-bold tracking-tight text-text-primary">{cat.name}</h2>
+                  <span className="text-xs font-medium text-text-secondary bg-bg-elevated border border-border-subtle px-2.5 py-0.5 rounded-md">
+                    {cat.concepts.length} videos
+                  </span>
+                </div>
+                {activeCategory === cat.name && (
+                  <button
+                    onClick={() => setActiveCategory(null)}
+                    className="text-xs text-text-secondary hover:text-text-primary transition-colors"
+                  >
+                    ← Back to all
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {cat.concepts.map((concept) => (
+                  <ConceptPreviewCard key={concept.id} concept={concept} onPreview={setSelectedConcept} />
+                ))}
+              </div>
+            </motion.section>
+          ))}
+        </div>
+      )}
 
       {/* Detail Modal Preview */}
       <AnimatePresence>
@@ -170,7 +249,7 @@ export default function LearnConcepts() {
                         className="w-full bg-[#F97316] hover:bg-[#EA580C] text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(249,115,22,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98]"
                       >
                          <Youtube size={24} /> 
-                         <span className="tracking-wide">🎯 Master this concept seamlessly on YouTube</span>
+                         <span className="tracking-wide">🎯 {t("learn.watchYoutube")}</span>
                       </button>
                   </div>
               </motion.div>

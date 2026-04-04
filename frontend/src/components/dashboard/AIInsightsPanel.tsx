@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
+import "@/i18n";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, Zap, CheckCircle2, Loader2, ArrowRight, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { useApi } from "@/hooks/useApi";
@@ -30,6 +32,7 @@ interface Props {
 
 export default function AIInsightsPanel({ insight, weakTopics }: Props) {
   const { call } = useApi();
+  const { t } = useTranslation();
   const [roadmap, setRoadmap] = useState<MicroRoadmap | null>(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState<number | null>(0);
@@ -59,8 +62,8 @@ export default function AIInsightsPanel({ insight, weakTopics }: Props) {
       <div className="card-glass p-8 border-border-subtle flex flex-col items-center justify-center gap-4 text-center opacity-60">
         <CheckCircle2 size={32} className="text-green-400" />
         <div>
-          <p className="font-bold text-sm">No insights yet</p>
-          <p className="text-xs text-text-secondary mt-1">Complete a mock interview to unlock AI-powered suggestions.</p>
+          <p className="font-bold text-sm">{t("insights.noTitle")}</p>
+          <p className="text-xs text-text-secondary mt-1">{t("insights.noSub")}</p>
         </div>
       </div>
     );
@@ -74,8 +77,8 @@ export default function AIInsightsPanel({ insight, weakTopics }: Props) {
           <Zap size={18} className="text-amber-400" />
         </div>
         <div>
-          <h3 className="text-sm font-bold uppercase tracking-widest">Adaptive Intelligence</h3>
-          <p className="text-xs text-text-secondary">Personalised suggestions from your last session</p>
+          <h3 className="text-sm font-bold uppercase tracking-widest">{t("insights.title")}</h3>
+          <p className="text-xs text-text-secondary">{t("insights.subtitle")}</p>
         </div>
       </div>
 
@@ -83,7 +86,7 @@ export default function AIInsightsPanel({ insight, weakTopics }: Props) {
         {/* Weak topics chips */}
         {weakTopics.length > 0 && (
           <div className="space-y-2">
-            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Detected Weak Areas</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">{t("insights.detectedWeakAreas")}</p>
             <div className="flex flex-wrap gap-2">
               {weakTopics.map((t) => (
                 <span
@@ -111,7 +114,7 @@ export default function AIInsightsPanel({ insight, weakTopics }: Props) {
                 <p className="text-sm text-text-primary leading-relaxed" dangerouslySetInnerHTML={{ __html: insight.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
               </div>
               <div className="flex items-center gap-2 text-xs font-bold text-text-muted">
-                <span>Last interview score: <span className="text-amber-400">{insight.score}/100</span></span>
+                <span>{t("insights.lastScore")}: <span className="text-amber-400">{insight.score}/100</span></span>
               </div>
             </motion.div>
           )}
@@ -128,12 +131,12 @@ export default function AIInsightsPanel({ insight, weakTopics }: Props) {
               {loading ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  Generating…
+                  {t("insights.generating")}
                 </>
               ) : (
                 <>
                   <Zap size={16} />
-                  Improve Weak Areas
+                  {t("insights.generateRoadmap")}
                 </>
               )}
             </button>
@@ -142,7 +145,7 @@ export default function AIInsightsPanel({ insight, weakTopics }: Props) {
                 onClick={() => setDismissed(true)}
                 className="btn-ghost px-4 text-sm cursor-pointer"
               >
-                Dismiss
+                {t("insights.dismiss")}
               </button>
             )}
           </div>
@@ -167,7 +170,7 @@ export default function AIInsightsPanel({ insight, weakTopics }: Props) {
                   onClick={() => setRoadmap(null)}
                   className="text-[10px] text-text-muted hover:text-text-secondary transition-colors cursor-pointer font-bold uppercase tracking-wider"
                 >
-                  Clear
+                  {t("insights.clear")}
                 </button>
               </div>
 

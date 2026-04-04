@@ -64,19 +64,20 @@ const upload = (0, multer_1.default)({
 // Resolved AI Roadmap (Exhaustive Precision Mode)
 // ──────────────────────────────────────────────
 app.post('/api/ai/roadmap', auth_1.authMiddleware, async (req, res) => {
-    const { topic } = req.body;
+    const { topic, language = "en-US" } = req.body;
     if (!topic)
         return res.status(400).json({ error: 'Please provide a topic.' });
     try {
-        console.log(`🗺️  AI Roadmap System Triggered: [${topic}]`);
+        console.log(`🗺️  AI Roadmap System Triggered: [${topic}] in ${language}`);
         const model = genAI.getGenerativeModel({
             model: "gemini-2.5-flash-lite",
             generationConfig: { responseMimeType: "application/json" } // FORCING JSON MODE
         });
         const prompt = `
       Generative Task: Create a hierarchical learning roadmap for: "${topic}".
+      IMPORTANT: The entire response MUST be translated into the ${language} language code.
       Return a JSON object with:
-      - nodes: array of {id: string, label: string, description: string}
+      - nodes: array of {id: string, label: string (in ${language}), description: string (in ${language})}
       - edges: array of {from: string, to: string}
       Requirements: 6-10 nodes, strict dependency graph, beginner to advanced.
     `;
@@ -116,11 +117,13 @@ app.post('/api/ai/roadmap/save', auth_1.authMiddleware, async (req, res) => {
 // Multimodal Doubt Solver (Simplified Stability)
 // ──────────────────────────────────────────────
 app.post('/api/ai/doubt-solver', auth_1.authMiddleware, upload.single('file'), async (req, res) => {
-    const { query } = req.body;
+    const { query, language = "en-US" } = req.body;
     const file = req.file;
     try {
         let finalQuery = query || "Explain this in detail.";
         let answer = "";
+        // Inject Multilingual Prompt Prefix
+        const langInstructions = `You MUST analyze and respond to this doubt ENTIRELY in ${language} language code. Do not use English unless the selected language is English. `;
         if (file && file.mimetype.startsWith('image/')) {
             const base64_img = file.buffer.toString('base64');
             const chat = await groq_1.default.chat.completions.create({
@@ -130,7 +133,7 @@ app.post('/api/ai/doubt-solver', auth_1.authMiddleware, upload.single('file'), a
                         role: "user",
                         // @ts-ignore
                         content: [
-                            { type: "text", text: finalQuery },
+                            { type: "text", text: langInstructions + finalQuery },
                             { type: "image_url", image_url: { url: `data:${file.mimetype};base64,${base64_img}` } },
                         ],
                     },
@@ -148,11 +151,15 @@ app.post('/api/ai/doubt-solver', auth_1.authMiddleware, upload.single('file'), a
                 const transcription = await groq_1.default.audio.transcriptions.create({
                     file: fs.createReadStream(tempFilePath),
                     model: "whisper-large-v3",
+                    // Hardcode to selected language for whisper to avoid hallucinating
+                    language: language.split('-')[0],
                 });
-                finalQuery = `Transcribed audio query: "${transcription.text}".\n\nAdditional context: ${finalQuery}`;
+                finalQuery = `${langInstructions}\n\nTranscribed audio query: "${transcription.text}".\n\nAdditional context: ${finalQuery}`;
             }
             finally {
-                fs.unlinkSync(tempFilePath);
+                const fs = require('fs');
+                if (fs.existsSync(tempFilePath))
+                    fs.unlinkSync(tempFilePath);
             }
             const chat = await groq_1.default.chat.completions.create({
                 model: "llama-3.3-70b-versatile",
@@ -163,7 +170,7 @@ app.post('/api/ai/doubt-solver', auth_1.authMiddleware, upload.single('file'), a
         else {
             const chat = await groq_1.default.chat.completions.create({
                 model: "llama-3.3-70b-versatile",
-                messages: [{ role: "user", content: finalQuery }]
+                messages: [{ role: "user", content: langInstructions + finalQuery }]
             });
             answer = chat.choices[0].message.content || "";
         }
@@ -310,11 +317,11 @@ app.post('/api/ai/resume/import', auth_1.authMiddleware, upload.single('resume')
 // AI Voice Command Interpreter
 // ──────────────────────────────────────────────
 app.post('/api/ai/voice-command', auth_1.authMiddleware, async (req, res) => {
-    const { prompt } = req.body;
+    const { prompt, language = "en-US" } = req.body;
     if (!prompt)
         return res.status(400).json({ error: "No prompt provided" });
     try {
-        console.log(`🎙️  Groq Voice Intent Mapping: [${prompt}]`);
+        console.log(`🎙️  Groq Voice Intent Mapping: [${prompt}] in ${language}`);
         const systemPrompt = `
       You are the Rakshak AI Voice Concierge. 
       Convert user voice prompt into structured JSON.
@@ -329,7 +336,7 @@ app.post('/api/ai/voice-command', auth_1.authMiddleware, async (req, res) => {
         "action": "NAVIGATE" | "EXECUTE",
         "path": "string",
         "payload": { "topic": "string", "tab": "chat" | "talk" },
-        "speech": "Short confirmation to say back"
+        "speech": "Short confirmation to say back entirely configured in the language: ${language}"
       }
       Example: "Go to talk mode" -> { "action": "NAVIGATE", "path": "/doubt-solver", "payload": { "tab": "talk" }, "speech": "Switching to talk mode." }
     `;

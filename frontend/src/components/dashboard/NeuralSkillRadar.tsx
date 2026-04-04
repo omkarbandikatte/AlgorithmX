@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import { useTranslation } from "react-i18next";
+import "@/i18n";
 import {
   RadarChart,
   Radar,
@@ -25,13 +27,6 @@ interface Props {
   loading?: boolean;
 }
 
-const METRICS = [
-  { key: "resumeScore", label: "Resume" },
-  { key: "interviewScore", label: "Interview" },
-  { key: "roadmapScore", label: "Roadmap" },
-  { key: "doubtSolverScore", label: "Doubt Solver" },
-];
-
 function RadarTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
@@ -45,6 +40,14 @@ function RadarTooltip({ active, payload }: any) {
 
 export default function NeuralSkillRadar({ data, loading = false }: Props) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
+
+  const METRICS = [
+    { key: "resumeScore", label: t("dashboard.radarResume") },
+    { key: "interviewScore", label: t("dashboard.radarInterview") },
+    { key: "roadmapScore", label: t("dashboard.radarRoadmap") },
+    { key: "doubtSolverScore", label: t("dashboard.radarDoubtSolver") },
+  ];
 
   const chartData = METRICS.map((m) => ({
     metric: m.label,
@@ -61,9 +64,9 @@ export default function NeuralSkillRadar({ data, loading = false }: Props) {
       <div className="flex items-center justify-between mb-4">
         <div className="space-y-0.5">
           <h3 className="text-sm font-bold uppercase tracking-widest text-text-primary">
-            Neural Skill Graph
+            {t("dashboard.neuralSkillGraph")}
           </h3>
-          <p className="text-xs text-text-secondary">Cross-tool intelligence snapshot</p>
+          <p className="text-xs text-text-secondary">{t("dashboard.crossToolSnapshot")}</p>
         </div>
         <div className="flex gap-2 flex-wrap justify-end">
           {METRICS.map((m) => (

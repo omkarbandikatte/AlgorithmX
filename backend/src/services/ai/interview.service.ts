@@ -13,7 +13,7 @@ const parseJSON = (text: string) => {
   }
 };
 
-export const generateQuestionsService = async (role: string, stack: string, exp: number) => {
+export const generateQuestionsService = async (role: string, stack: string, exp: number, language: string = "en-US") => {
   const prompt = `
     You are an expert interviewer.
 
@@ -21,11 +21,13 @@ export const generateQuestionsService = async (role: string, stack: string, exp:
     Role: ${role}
     Tech Stack: ${stack}
     Experience: ${exp} years
+    Language: The generated text MUST be strictly in ${language} language code.
 
     Rules:
     - If Experience is 0, generate beginner level questions.
     - If Experience is 1-3, generate moderate level questions.
     - If Experience is strictly greater than 3, generate advanced/system design questions.
+    - Please make sure the output JSON object keys are strictly exactly 'questions' regardless of language. The array values MUST be translated to ${language}.
 
     Return ONLY valid JSON:
     {
@@ -62,12 +64,13 @@ export const transcribeAudioService = async (filePath: string) => {
   return completion.text;
 };
 
-export const evaluateAnswerService = async (question: string, userAnswer: string) => {
+export const evaluateAnswerService = async (question: string, userAnswer: string, language: string = "en-US") => {
   const prompt = `
     You are an expert technical interviewer.
     
     IMPORTANT: You MUST identify the language of the Candidate Answer (e.g. English, Urdu, Hindi, Spanish). 
-    Your feedback, recommendations, AND the idealAnswer MUST be provided entirely in the EXACT SAME LANGUAGE as the Candidate Answer.
+    Your feedback, recommendations, AND the idealAnswer MUST be provided entirely in the EXACT SAME LANGUAGE as the Candidate Answer and the target language: ${language}.
+    Ensure your JSON response contains ONLY perfectly translated values for the defined keys.
 
     Question:
     ${question}
@@ -78,8 +81,8 @@ export const evaluateAnswerService = async (question: string, userAnswer: string
     Evaluate the answer out of 10. You MUST respond with ONLY a raw JSON object and nothing else.
     {
       "score": <number>,
-      "feedback": "<detailed feedback in the candidate's spoken language>",
-      "idealAnswer": "<perfect answer in the candidate's spoken language>"
+      "feedback": "<detailed feedback in ${language}>",
+      "idealAnswer": "<perfect answer in ${language}>"
     }
   `;
 

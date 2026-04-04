@@ -15,10 +15,15 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import RoadmapGraph from "@/components/roadmap/RoadmapGraph";
+import { useLanguage } from "@/context/LanguageContext";
+import { useTranslation } from "react-i18next";
+import "@/i18n";
 
 export default function RoadmapGenerator() {
   const { call } = useApi();
   const searchParams = useSearchParams();
+  const { language } = useLanguage();
+  const { t } = useTranslation();
   const [topic, setTopic] = useState("");
   const [roadmap, setRoadmap] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -38,7 +43,7 @@ export default function RoadmapGenerator() {
   const handleAutoGenerate = async (t: string) => {
     setIsLoading(true);
     try {
-      const res = await call("/api/ai/roadmap", { method: "POST", body: JSON.stringify({ topic: t }) });
+      const res = await call("/api/ai/roadmap", { method: "POST", body: JSON.stringify({ topic: t, language }) });
       setRoadmap(res);
     } catch (e) {
       console.error(e);
@@ -58,7 +63,7 @@ export default function RoadmapGenerator() {
     try {
       const res = await call("/api/ai/roadmap", {
         method: "POST",
-        body: JSON.stringify({ topic })
+        body: JSON.stringify({ topic, language })
       });
       setRoadmap(res);
     } catch (err: any) {
@@ -75,7 +80,7 @@ export default function RoadmapGenerator() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 shrink-0">
           <div className="space-y-1">
               <h1 className="text-3xl font-bold tracking-tight">AI Roadmap <span className="gradient-text">Generator</span></h1>
-              <p className="text-text-secondary text-sm">Visualize your learning journey from beginner to expert in seconds.</p>
+              <p className="text-text-secondary text-sm">{t("roadmap.subtitle")}</p>
           </div>
           
           <form onSubmit={handleGenerate} className="flex-1 max-w-lg mb-1">
@@ -85,7 +90,7 @@ export default function RoadmapGenerator() {
                     type="text" 
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
-                    placeholder="Enter a skill (e.g., DSA, Rust, Quantum Computing)..." 
+                    placeholder={t("roadmap.placeholder")}
                     className="flex-1 bg-transparent border-none py-2 text-sm focus:outline-none placeholder:text-text-muted"
                   />
                   <button 
@@ -93,7 +98,7 @@ export default function RoadmapGenerator() {
                     className="btn-primary btn-sm px-6 cursor-pointer"
                   >
                     {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
-                    <span>{isLoading ? "Generating..." : "Generate Graph"}</span>
+                    <span>{isLoading ? t("roadmap.generating") : t("roadmap.generate")}</span>
                   </button>
               </div>
           </form>

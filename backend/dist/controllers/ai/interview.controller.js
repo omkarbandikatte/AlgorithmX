@@ -41,8 +41,8 @@ const service = __importStar(require("../../services/ai/interview.service"));
 const fs_1 = __importDefault(require("fs"));
 const generateQuestions = async (req, res) => {
     try {
-        const { role, techStack, experience } = req.body;
-        const data = await service.generateQuestionsService(role, techStack, experience);
+        const { role, techStack, experience, language } = req.body;
+        const data = await service.generateQuestionsService(role, techStack, experience, language);
         res.json(data);
     }
     catch (err) {
@@ -82,8 +82,8 @@ const transcribeAudio = async (req, res) => {
 exports.transcribeAudio = transcribeAudio;
 const evaluateAnswer = async (req, res) => {
     try {
-        const { question, userAnswer } = req.body;
-        const data = await service.evaluateAnswerService(question, userAnswer);
+        const { question, userAnswer, language } = req.body;
+        const data = await service.evaluateAnswerService(question, userAnswer, language);
         res.json(data);
     }
     catch (err) {

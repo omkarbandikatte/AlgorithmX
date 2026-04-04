@@ -34,11 +34,11 @@ const upload = multer({
 // ──────────────────────────────────────────────
 
 app.post('/api/ai/roadmap', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
-  const { topic } = req.body;
+  const { topic, language = "en-US" } = req.body;
   if (!topic) return res.status(400).json({ error: 'Please provide a topic.' });
 
   try {
-    console.log(`🗺️  AI Roadmap System Triggered: [${topic}]`);
+    console.log(`🗺️  AI Roadmap System Triggered: [${topic}] in ${language}`);
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash-lite",
       generationConfig: { responseMimeType: "application/json" } // FORCING JSON MODE
@@ -46,8 +46,9 @@ app.post('/api/ai/roadmap', authMiddleware, async (req: AuthenticatedRequest, re
 
     const prompt = `
       Generative Task: Create a hierarchical learning roadmap for: "${topic}".
+      IMPORTANT: The entire response MUST be translated into the ${language} language code.
       Return a JSON object with:
-      - nodes: array of {id: string, label: string, description: string}
+      - nodes: array of {id: string, label: string (in ${language}), description: string (in ${language})}
       - edges: array of {from: string, to: string}
       Requirements: 6-10 nodes, strict dependency graph, beginner to advanced.
     `;
@@ -90,57 +91,63 @@ app.post('/api/ai/roadmap/save', authMiddleware, async (req: AuthenticatedReques
 // ──────────────────────────────────────────────
 
 app.post('/api/ai/doubt-solver', authMiddleware, upload.single('file'), async (req: AuthenticatedRequest, res: Response) => {
-  const { query } = req.body;
+  const { query, language = "en-US" } = req.body;
   const file = req.file;
 
   try {
     let finalQuery = query || "Explain this in detail.";
     let answer = "";
+    
+    // Inject Multilingual Prompt Prefix
+    const langInstructions = `You MUST analyze and respond to this doubt ENTIRELY in ${language} language code. Do not use English unless the selected language is English. `;
 
     if (file && file.mimetype.startsWith('image/')) {
-        const base64_img = file.buffer.toString('base64');
-        const chat = await groq.chat.completions.create({
-            model: "llama-3.2-11b-vision-preview",
-            messages: [
-                {
-                    role: "user",
-                    // @ts-ignore
-                    content: [
-                        { type: "text", text: finalQuery },
-                        { type: "image_url", image_url: { url: `data:${file.mimetype};base64,${base64_img}` } },
-                    ],
-                },
-            ]
-        });
-        answer = chat.choices[0].message.content || "";
+      const base64_img = file.buffer.toString('base64');
+      const chat = await groq.chat.completions.create({
+        model: "llama-3.2-11b-vision-preview",
+        messages: [
+          {
+            role: "user",
+            // @ts-ignore
+            content: [
+              { type: "text", text: langInstructions + finalQuery },
+              { type: "image_url", image_url: { url: `data:${file.mimetype};base64,${base64_img}` } },
+            ],
+          },
+        ]
+      });
+      answer = chat.choices[0].message.content || "";
     } else if (file && file.mimetype.startsWith('audio/')) {
+      const fs = require('fs');
+      const os = require('os');
+      const path = require('path');
+      const tempFilePath = path.join(os.tmpdir(), `audio-${Date.now()}.webm`);
+      fs.writeFileSync(tempFilePath, file.buffer);
+
+      try {
+        const transcription = await groq.audio.transcriptions.create({
+          file: fs.createReadStream(tempFilePath),
+          model: "whisper-large-v3",
+          // Hardcode to selected language for whisper to avoid hallucinating
+          language: language.split('-')[0],
+        });
+        finalQuery = `${langInstructions}\n\nTranscribed audio query: "${transcription.text}".\n\nAdditional context: ${finalQuery}`;
+      } finally {
         const fs = require('fs');
-        const os = require('os');
-        const path = require('path');
-        const tempFilePath = path.join(os.tmpdir(), `audio-${Date.now()}.webm`);
-        fs.writeFileSync(tempFilePath, file.buffer);
-        
-        try {
-            const transcription = await groq.audio.transcriptions.create({
-                file: fs.createReadStream(tempFilePath),
-                model: "whisper-large-v3",
-            });
-            finalQuery = `Transcribed audio query: "${transcription.text}".\n\nAdditional context: ${finalQuery}`;
-        } finally {
-            fs.unlinkSync(tempFilePath);
-        }
-        
-        const chat = await groq.chat.completions.create({
-            model: "llama-3.3-70b-versatile",
-            messages: [{ role: "user", content: finalQuery }]
-        });
-        answer = chat.choices[0].message.content || "";
+        if(fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+      }
+
+      const chat = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "user", content: finalQuery }]
+      });
+      answer = chat.choices[0].message.content || "";
     } else {
-        const chat = await groq.chat.completions.create({
-            model: "llama-3.3-70b-versatile",
-            messages: [{ role: "user", content: finalQuery }]
-        });
-        answer = chat.choices[0].message.content || "";
+      const chat = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "user", content: langInstructions + finalQuery }]
+      });
+      answer = chat.choices[0].message.content || "";
     }
 
     res.json({ answer });
@@ -209,7 +216,7 @@ app.post('/api/ai/interview/final-feedback', authMiddleware, async (req: Authent
     const parseableText = jsonMatch ? jsonMatch[0] : textResp;
 
     const data = JSON.parse(parseableText);
-    
+
     // Auto-Save Interview to DB
     if (db) {
       await db.collection('users').doc(req.user!.uid).collection('interviews').add({
@@ -259,20 +266,20 @@ app.post('/api/ai/interview/final-feedback', authMiddleware, async (req: Authent
 app.post('/api/ai/resume/score', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const chat = await groq.chat.completions.create({
-      messages: [{ role: 'system', content: 'HR Expert. JSON Score: totalScore, breakdown, highlights.' }, { role: 'user', content: req.body.resumeText }],
+      messages: [{ role: 'system', content: 'You are an expert HR resume reviewer. Analyze the resume and return ONLY valid JSON with this exact structure: { "totalScore": <number 0-100>, "breakdown": { "Contact Info": <score>, "Work Experience": <score>, "Education": <score>, "Skills": <score>, "Formatting": <score> }, "highlights": { "strengths": [<3-5 specific strength strings>], "weaknesses": [<3-5 specific improvement strings>] } }. No extra keys, no markdown.' }, { role: 'user', content: req.body.resumeText }],
       model: 'llama-3.3-70b-versatile',
       response_format: { type: 'json_object' }
     });
     const resultJson = JSON.parse(chat.choices[0].message.content || '{}');
-    
+
     // Auto-Save Resume Score to DB
     if (db) {
-       await db.collection('users').doc(req.user!.uid).collection('resumes').add({
-         totalScore: resultJson.totalScore,
-         breakdown: resultJson.breakdown,
-         highlights: resultJson.highlights,
-         createdAt: admin.firestore.FieldValue.serverTimestamp()
-       });
+      await db.collection('users').doc(req.user!.uid).collection('resumes').add({
+        totalScore: resultJson.totalScore,
+        breakdown: resultJson.breakdown,
+        highlights: resultJson.highlights,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
     }
 
     res.json(resultJson);
@@ -281,8 +288,28 @@ app.post('/api/ai/resume/score', authMiddleware, async (req: AuthenticatedReques
   }
 });
 
+app.post('/api/ai/resume/enhance', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  const { resumeText, focusArea } = req.body;
+  if (!resumeText) return res.status(400).json({ error: 'No resume text provided.' });
+  try {
+    const chat = await groq.chat.completions.create({
+      messages: [
+        {
+          role: 'system',
+          content: `You are an expert professional resume writer. Rewrite and enhance the provided resume to maximize impact for job applications. Focus on: ${focusArea || 'all sections'}. Use strong action verbs, quantify achievements where possible, improve clarity and formatting. Return ONLY the enhanced resume text — no commentary, no markdown code blocks, no extra explanation.`
+        },
+        { role: 'user', content: resumeText }
+      ],
+      model: 'llama-3.3-70b-versatile',
+    });
+    const enhancedText = chat.choices[0].message.content?.trim() || '';
+    res.json({ enhancedText });
+  } catch (error) {
+    res.status(500).json({ error: 'Enhancement failed.' });
+  }
+});
+
 app.post('/api/ai/resume/import', authMiddleware, upload.single('resume'), async (req: AuthenticatedRequest, res: Response) => {
-  if (!req.file) return res.status(400).json({ error: 'No file' });
   try {
     let text = '';
     if (req.file.mimetype === 'application/pdf') {
@@ -301,11 +328,11 @@ app.post('/api/ai/resume/import', authMiddleware, upload.single('resume'), async
 // ──────────────────────────────────────────────
 
 app.post('/api/ai/voice-command', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
-  const { prompt } = req.body;
+  const { prompt, language = "en-US" } = req.body;
   if (!prompt) return res.status(400).json({ error: "No prompt provided" });
 
   try {
-    console.log(`🎙️  Groq Voice Intent Mapping: [${prompt}]`);
+    console.log(`🎙️  Groq Voice Intent Mapping: [${prompt}] in ${language}`);
 
     const systemPrompt = `
       You are the Rakshak AI Voice Concierge. 
@@ -321,7 +348,7 @@ app.post('/api/ai/voice-command', authMiddleware, async (req: AuthenticatedReque
         "action": "NAVIGATE" | "EXECUTE",
         "path": "string",
         "payload": { "topic": "string", "tab": "chat" | "talk" },
-        "speech": "Short confirmation to say back"
+        "speech": "Short confirmation to say back entirely configured in the language: ${language}"
       }
       Example: "Go to talk mode" -> { "action": "NAVIGATE", "path": "/doubt-solver", "payload": { "tab": "talk" }, "speech": "Switching to talk mode." }
     `;

@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import { useTranslation } from "react-i18next";
+import "@/i18n";
 import { useAuth } from "@/context/AuthContext";
 import {
   Sparkles,
@@ -63,7 +65,9 @@ const MOCK_ACTIVITY = [
 const MOCK_RADAR: RadarData = { resumeScore: 0, interviewScore: 0, roadmapScore: 0, doubtSolverScore: 0 };
 
 /* ── Sub-components ── */
-const FeatureCard = ({ icon: Icon, title, description, href, color }: any) => (
+const FeatureCard = ({ icon: Icon, title, description, href, color }: any) => {
+  const { t } = useTranslation();
+  return (
   <Link href={href} className="group">
     <div className="card-glass p-7 h-full border-border-subtle hover:border-accent-start/30 transition-all duration-300 relative overflow-hidden flex flex-col gap-5">
       <div className={`w-12 h-12 rounded-2xl ${color} flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg`}>
@@ -74,12 +78,13 @@ const FeatureCard = ({ icon: Icon, title, description, href, color }: any) => (
         <p className="text-xs text-text-secondary leading-relaxed">{description}</p>
       </div>
       <div className="mt-auto flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-accent-start opacity-0 group-hover:opacity-100 transition-opacity">
-        <span>Open Tool</span>
+        <span>{t("dashboard.openTool")}</span>
         <ArrowRight size={13} />
       </div>
     </div>
   </Link>
-);
+  );
+};
 
 const StatCard = ({ label, value, icon: Icon, trend }: any) => (
   <div className="card-glass p-6 border-border-subtle hover:border-accent-start/20 transition-all group">
@@ -97,12 +102,13 @@ const StatCard = ({ label, value, icon: Icon, trend }: any) => (
 );
 
 function InterviewTooltip({ active, payload }: any) {
+  const { t } = useTranslation();
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
     <div className="rounded-xl bg-bg-elevated border border-border-subtle px-4 py-3 shadow-xl text-sm space-y-1">
       <p className="font-bold text-text-primary">{d.name}</p>
-      <p className="text-accent-start font-semibold">Score: {d.score}/100</p>
+      <p className="text-accent-start font-semibold">{t("dashboard.score")}: {d.score}/100</p>
       {d.feedback && <p className="text-text-secondary text-xs">{d.feedback}</p>}
     </div>
   );
@@ -127,6 +133,7 @@ function ResumeGauge({ score }: { score: number }) {
 }
 
 function RoadmapDonut({ completed, total }: { completed: number; total: number }) {
+  const { t } = useTranslation();
   const remaining = Math.max(0, total - completed);
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
   const data = [{ name: "Done", value: completed || 1 }, { name: "Remaining", value: remaining }];
@@ -142,7 +149,7 @@ function RoadmapDonut({ completed, total }: { completed: number; total: number }
       </ResponsiveContainer>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-3xl font-black text-text-primary">{pct}%</span>
-        <span className="text-xs text-text-secondary font-semibold">{completed}/{total} modules</span>
+        <span className="text-xs text-text-secondary font-semibold">{completed}/{total} {t("dashboard.modules")}</span>
       </div>
     </div>
   );
@@ -153,6 +160,7 @@ export default function DashboardOverview() {
   const { user } = useAuth();
   const { call } = useApi();
   const { theme } = useTheme();
+  const { t } = useTranslation();
 
   const gridColor = theme === "dark" ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.06)";
   const axisColor = theme === "dark" ? "#6b7280" : "#9ca3af";
@@ -204,7 +212,7 @@ export default function DashboardOverview() {
     if (raw?.length) {
       return [...raw]
         .reverse()
-        .map((iv: any, idx: number) => ({ name: `Session ${idx + 1}`, score: iv.score || 0, feedback: iv.report?.slice(0, 80) || "" }));
+        .map((iv: any, idx: number) => ({ name: `${t("dashboard.session")} ${idx + 1}`, score: iv.score || 0, feedback: iv.report?.slice(0, 80) || "" }));
     }
     return MOCK_INTERVIEWS;
   }, [dashData]);
@@ -221,9 +229,9 @@ export default function DashboardOverview() {
       >
         <div className="space-y-1">
           <h1 className="text-4xl font-black tracking-tight">
-            Welcome, <span className="gradient-text">{user?.displayName?.split(" ")[0] || "Scholar"}</span>!
+            {t("dashboard.welcome", { name: user?.displayName?.split(" ")[0] || t("dashboard.defaultName") })}
           </h1>
-          <p className="text-text-secondary leading-relaxed">Your adaptive intelligence dashboard. Here&apos;s your unified career snapshot.</p>
+          <p className="text-text-secondary leading-relaxed">{t("dashboard.subtitle")}</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -235,7 +243,7 @@ export default function DashboardOverview() {
           </button>
           <div className="px-5 py-2.5 rounded-xl border border-border-subtle bg-hover-bg text-xs font-bold tracking-widest uppercase flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            Active
+            {t("dashboard.active")}
           </div>
         </div>
       </motion.div>
@@ -244,10 +252,10 @@ export default function DashboardOverview() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.05 }}
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"
       >
-        <StatCard icon={TrendingUp} label="Resume Score" value={resumeScore > 0 ? `${resumeScore}/100` : "—"} trend={resumeScore > 0 ? undefined : undefined} />
-        <StatCard icon={Brain} label="Interview Best" value={latestScore > 0 ? `${latestScore}/100` : "—"} trend={latestScore > 0 ? "Improving" : undefined} />
-        <StatCard icon={ShieldCheck} label="Roadmap Progress" value={roadmapProgress.total > 0 ? `${Math.round((roadmapProgress.completed / roadmapProgress.total) * 100)}%` : "—"} />
-        <StatCard icon={Zap} label="Weekly Doubts" value={doubtsTotal.toString()} />
+        <StatCard icon={TrendingUp} label={t("dashboard.resumeScore")} value={resumeScore > 0 ? `${resumeScore}/100` : "\u2014"} />
+        <StatCard icon={Brain} label={t("dashboard.interviewBest")} value={latestScore > 0 ? `${latestScore}/100` : "\u2014"} trend={latestScore > 0 ? t("dashboard.improving") : undefined} />
+        <StatCard icon={ShieldCheck} label={t("dashboard.roadmapProgress")} value={roadmapProgress.total > 0 ? `${Math.round((roadmapProgress.completed / roadmapProgress.total) * 100)}%` : "\u2014"} />
+        <StatCard icon={Zap} label={t("dashboard.weeklyDoubts")} value={doubtsTotal.toString()} />
       </motion.div>
 
       {/* ── NEURAL SKILL GRAPH + AI INSIGHTS ── */}
@@ -272,8 +280,8 @@ export default function DashboardOverview() {
         {/* Interview performance */}
         <div className="lg:col-span-2 card-glass p-6 border-border-subtle">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="font-bold flex items-center gap-2 text-sm"><TrendingUp size={16} className="text-accent-start" /> Interview Performance</h3>
-            <span className="text-[10px] font-bold text-green-400 bg-green-400/10 px-2.5 py-1 rounded-full">Trending Up</span>
+            <h3 className="font-bold flex items-center gap-2 text-sm"><TrendingUp size={16} className="text-accent-start" /> {t("dashboard.interviewPerformance")}</h3>
+            <span className="text-[10px] font-bold text-green-400 bg-green-400/10 px-2.5 py-1 rounded-full">{t("dashboard.trendingUp")}</span>
           </div>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={interviewChartData}>
@@ -292,7 +300,7 @@ export default function DashboardOverview() {
 
         {/* Activity area chart */}
         <div className="card-glass p-6 border-border-subtle">
-          <h3 className="font-bold flex items-center gap-2 text-sm mb-6"><Zap size={16} className="text-yellow-400" /> Weekly Activity</h3>
+          <h3 className="font-bold flex items-center gap-2 text-sm mb-6"><Zap size={16} className="text-yellow-400" /> {t("dashboard.weeklyActivity")}</h3>
           <ResponsiveContainer width="100%" height={250}>
             <AreaChart data={MOCK_ACTIVITY}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
@@ -315,28 +323,28 @@ export default function DashboardOverview() {
         className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6"
       >
         <div className="card-glass p-6 border-border-subtle">
-          <h3 className="font-bold flex items-center gap-2 text-sm mb-2"><FileText size={16} className="text-accent-start" /> Resume Score</h3>
+          <h3 className="font-bold flex items-center gap-2 text-sm mb-2"><FileText size={16} className="text-accent-start" /> {t("dashboard.resumeScore")}</h3>
           <ResumeGauge score={resumeScore} />
-          <p className="text-xs text-text-secondary text-center mt-1">ATS compatibility rating</p>
+          <p className="text-xs text-text-secondary text-center mt-1">{t("dashboard.atsRating")}</p>
         </div>
         <div className="card-glass p-6 border-border-subtle">
-          <h3 className="font-bold flex items-center gap-2 text-sm mb-2"><Network size={16} className="text-accent-start" /> Roadmap</h3>
+          <h3 className="font-bold flex items-center gap-2 text-sm mb-2"><Network size={16} className="text-accent-start" /> {t("dashboard.roadmapLabel")}</h3>
           <RoadmapDonut completed={roadmapProgress.completed} total={roadmapProgress.total} />
-          <p className="text-xs text-text-secondary text-center mt-1">Learning path completion</p>
+          <p className="text-xs text-text-secondary text-center mt-1">{t("dashboard.learningPathCompletion")}</p>
         </div>
 
         {/* Quick action CTA cards */}
         <FeatureCard
           icon={MessageSquare}
-          title="Doubt Solver"
-          description="Instant AI answers — text, voice, or image."
+          title={t("nav.doubtSolver")}
+          description={t("dashboard.doubtSolverDesc")}
           href="/doubt-solver"
           color="bg-gradient-to-br from-indigo-500 to-purple-600"
         />
         <FeatureCard
           icon={Users}
-          title="Interview Room"
-          description="Proctored mock interviews with real-time AI feedback."
+          title={t("dashboard.interviewRoom")}
+          description={t("dashboard.interviewRoomDesc")}
           href="/interview"
           color="bg-gradient-to-br from-green-500 to-teal-600"
         />
@@ -352,8 +360,8 @@ export default function DashboardOverview() {
               <FileText size={18} className="text-blue-400" />
             </div>
             <div>
-              <p className="text-sm font-bold">Improve Weak Areas</p>
-              <p className="text-[11px] text-text-secondary">Re-score your resume</p>
+              <p className="text-sm font-bold">{t("dashboard.improveWeakAreas")}</p>
+              <p className="text-[11px] text-text-secondary">{t("dashboard.reScoreResume")}</p>
             </div>
           </div>
           <ArrowRight size={16} className="text-text-muted group-hover:text-accent-start transition-colors" />
@@ -365,8 +373,8 @@ export default function DashboardOverview() {
               <Users size={18} className="text-green-400" />
             </div>
             <div>
-              <p className="text-sm font-bold">Take Another Interview</p>
-              <p className="text-[11px] text-text-secondary">Sharpen your skills</p>
+              <p className="text-sm font-bold">{t("dashboard.anotherInterview")}</p>
+              <p className="text-[11px] text-text-secondary">{t("dashboard.sharpenSkills")}</p>
             </div>
           </div>
           <ArrowRight size={16} className="text-text-muted group-hover:text-accent-start transition-colors" />
@@ -378,8 +386,8 @@ export default function DashboardOverview() {
               <Network size={18} className="text-accent-start" />
             </div>
             <div>
-              <p className="text-sm font-bold">Continue Roadmap</p>
-              <p className="text-[11px] text-text-secondary">Pick up where you left off</p>
+              <p className="text-sm font-bold">{t("dashboard.continueRoadmap")}</p>
+              <p className="text-[11px] text-text-secondary">{t("dashboard.pickUpWhereLeft")}</p>
             </div>
           </div>
           <ArrowRight size={16} className="text-text-muted group-hover:text-accent-start transition-colors" />
@@ -391,13 +399,13 @@ export default function DashboardOverview() {
         className="card-glass p-1 border-border-subtle overflow-hidden"
       >
         <div className="p-6 border-b border-border-subtle flex items-center justify-between">
-          <h3 className="font-bold flex items-center gap-3 text-sm"><Sparkles size={16} className="text-accent-start" /> Recent Activity</h3>
+          <h3 className="font-bold flex items-center gap-3 text-sm"><Sparkles size={16} className="text-accent-start" /> {t("dashboard.recentActivity")}</h3>
         </div>
         <div className="p-6 space-y-3">
           {history.length === 0 ? (
             <div className="text-center p-8 text-text-muted text-sm border-2 border-dashed border-border-subtle rounded-xl flex flex-col items-center gap-3">
               <Clock size={24} />
-              No activity yet. Start using tools to see your history here.
+              {t("dashboard.noActivity")}
             </div>
           ) : history.map((item, i) => (
             <motion.div key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
@@ -408,7 +416,7 @@ export default function DashboardOverview() {
                   {item.type === "Roadmap" ? <Network size={20} /> : item.type === "Interview" ? <Users size={20} /> : <FileText size={20} />}
                 </div>
                 <div className="space-y-0.5">
-                  <p className="text-sm font-bold text-text-primary group-hover:text-accent-start transition-colors">{item.type} Generated</p>
+                  <p className="text-sm font-bold text-text-primary group-hover:text-accent-start transition-colors">{item.type} {t("dashboard.generated")}</p>
                   <p className="text-xs text-text-secondary">{item.title}</p>
                 </div>
               </div>
