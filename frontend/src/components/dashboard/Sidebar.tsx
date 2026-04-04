@@ -29,8 +29,8 @@ const SidebarItem = ({ icon: Icon, label, href, active, collapsed }: any) => (
     href={href}
     title={collapsed ? label : undefined}
     className={`relative flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group ${active
-        ? "bg-accent-start text-white shadow-lg shadow-accent-start/20"
-        : "text-text-secondary hover:bg-hover-bg hover:text-text-primary"
+      ? "bg-accent-start text-white shadow-lg shadow-accent-start/20"
+      : "text-text-secondary hover:bg-hover-bg hover:text-text-primary"
       } ${collapsed ? "justify-center" : ""}`}
   >
     <Icon size={20} className={`flex-shrink-0 ${active ? "" : "group-hover:scale-110 transition-transform"}`} />
@@ -70,11 +70,10 @@ function LanguageDropdown({ collapsed, language, setLanguage, t }: {
       {!collapsed ? (
         <button
           onClick={() => setOpen((v) => !v)}
-          className={`w-full px-3 py-2.5 flex items-center gap-2.5 rounded-xl border transition-all ${
-            open
+          className={`w-full px-3 py-2.5 flex items-center gap-2.5 rounded-xl border transition-all ${open
               ? "bg-bg-elevated border-[#F97316]/50 text-text-primary"
               : "border-border-subtle text-text-secondary hover:text-text-primary hover:bg-hover-bg"
-          }`}
+            }`}
         >
           <Globe size={16} className="flex-shrink-0" />
           <span className="flex-1 text-left text-sm font-medium">{currentLang?.name}</span>
@@ -84,9 +83,8 @@ function LanguageDropdown({ collapsed, language, setLanguage, t }: {
         <button
           onClick={() => setOpen((v) => !v)}
           title={t("common.language")}
-          className={`w-full px-3 py-3 flex items-center justify-center rounded-xl transition-colors ${
-            open ? "bg-bg-elevated text-text-primary" : "text-text-secondary hover:text-text-primary hover:bg-hover-bg"
-          }`}
+          className={`w-full px-3 py-3 flex items-center justify-center rounded-xl transition-colors ${open ? "bg-bg-elevated text-text-primary" : "text-text-secondary hover:text-text-primary hover:bg-hover-bg"
+            }`}
         >
           <Globe size={20} />
         </button>
@@ -95,9 +93,8 @@ function LanguageDropdown({ collapsed, language, setLanguage, t }: {
       {/* Dropdown */}
       {open && (
         <div
-          className={`absolute z-50 bottom-full mb-2 bg-bg-elevated border border-border-subtle rounded-xl shadow-2xl overflow-hidden ${
-            collapsed ? "left-full ml-3 w-44" : "left-0 right-0"
-          }`}
+          className={`absolute z-50 bottom-full mb-2 bg-bg-elevated border border-border-subtle rounded-xl shadow-2xl overflow-hidden ${collapsed ? "left-full ml-3 w-44" : "left-0 right-0"
+            }`}
         >
           <div className="px-3 py-2 border-b border-border-subtle">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-text-secondary">Language</p>
@@ -106,11 +103,10 @@ function LanguageDropdown({ collapsed, language, setLanguage, t }: {
             <button
               key={lang.code}
               onClick={() => { setLanguage(lang.code); setOpen(false); }}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-                language === lang.code
+              className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${language === lang.code
                   ? "bg-[#F97316]/10 text-[#F97316] font-semibold"
                   : "text-text-secondary hover:bg-hover-bg hover:text-text-primary"
-              }`}
+                }`}
             >
               <span className="w-7 text-xs font-bold opacity-50 shrink-0">{lang.short}</span>
               <span>{lang.name}</span>
@@ -142,14 +138,14 @@ export default function Sidebar() {
   };
 
   const menuItems = [
-    { icon: Layout,       label: t("nav.dashboard"),    href: "/dashboard" },
-    { icon: FileText,     label: t("nav.resume"),        href: "/resume" },
-    { icon: MessageSquare,label: t("nav.doubtSolver"),   href: "/doubt-solver" },
-    { icon: Users,        label: t("nav.interview"),     href: "/interview" },
-    { icon: Map,          label: t("nav.roadmap"),       href: "/roadmap" },
-    { icon: Mic,          label: t("nav.interviewAI"),   href: "/interview-ai" },
-    { icon: Briefcase,    label: t("nav.hiddenJobs"),    href: "/hidden-jobs" },
-    { icon: BookOpen,     label: t("nav.learn"),         href: "/learn" },
+    { icon: Layout, label: t("nav.dashboard"), href: "/dashboard" },
+    { icon: FileText, label: t("nav.resume"), href: "/resume" },
+    { icon: MessageSquare, label: t("nav.doubtSolver"), href: "/doubt-solver" },
+    // { icon: Users, label: t("nav.interview"), href: "/interview" },
+    { icon: Map, label: t("nav.roadmap"), href: "/roadmap" },
+    { icon: Mic, label: t("nav.interviewAI"), href: "/interview-ai" },
+    { icon: Briefcase, label: t("nav.hiddenJobs"), href: "/hidden-jobs" },
+    { icon: BookOpen, label: t("nav.learn"), href: "/learn" },
   ];
 
   return (
