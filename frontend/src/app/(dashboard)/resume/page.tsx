@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import "@/i18n";
 import { useApi } from "@/hooks/useApi";
@@ -14,9 +14,16 @@ import {
   FileText,
   BarChart2,
   Copy,
-  Check
+  Check,
+  X,
+  Plus,
+  Brain,
+  Save,
+  Briefcase,
+  Tag
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
 export default function ResumeHub() {
   const { call } = useApi();
@@ -24,6 +31,8 @@ export default function ResumeHub() {
   const [isImporting, setIsImporting] = useState(false);
   const [isScoring, setIsScoring] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [isSavingSkills, setIsSavingSkills] = useState(false);
   
   const [resumeText, setResumeText] = useState("");
   const [analysis, setAnalysis] = useState<any>(null);
@@ -31,6 +40,31 @@ export default function ResumeHub() {
   const [error, setError] = useState("");
   const [activeView, setActiveView] = useState<"score" | "enhance">("score");
   const [copied, setCopied] = useState(false);
+
+  // Skill extraction state
+  const [extractedProfile, setExtractedProfile] = useState<any>(null);
+  const [editableSkills, setEditableSkills] = useState<string[]>([]);
+  const [newSkill, setNewSkill] = useState("");
+  const [skillsSaved, setSkillsSaved] = useState(false);
+
+  // Load existing skills on mount
+  useEffect(() => {
+    loadExistingSkills();
+  }, []);
+
+  const loadExistingSkills = async () => {
+    try {
+      const res = await call("/api/ai/resume/skills");
+      if (res.skills?.length > 0) {
+        setEditableSkills(res.skills);
+      }
+      if (res.extractedProfile) {
+        setExtractedProfile(res.extractedProfile);
+      }
+    } catch {
+      // Silently fail — user may not have skills yet
+    }
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -54,6 +88,8 @@ export default function ResumeHub() {
       
       // Auto-score after import
       handleScore(res.text);
+      // Auto-extract skills
+      handleExtractSkills(res.text);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -68,7 +104,6 @@ export default function ResumeHub() {
         method: "POST",
         body: JSON.stringify({ resumeText: text })
       });
-      // Normalize highlights regardless of what field names the LLM used
       const hl = res.highlights || res.Highlights || {};
       res.highlights = {
         strengths: hl.strengths || hl.Strengths || hl.strength || [],
@@ -79,6 +114,22 @@ export default function ResumeHub() {
       setError(err.message);
     } finally {
       setIsScoring(false);
+    }
+  };
+
+  const handleExtractSkills = async (text: string) => {
+    setIsExtracting(true);
+    try {
+      const res = await call("/api/ai/resume/extract-skills", {
+        method: "POST",
+        body: JSON.stringify({ resumeText: text })
+      });
+      setExtractedProfile(res);
+      setEditableSkills(res.skills || []);
+    } catch (err: any) {
+      console.error("Skill extraction error:", err.message);
+    } finally {
+      setIsExtracting(false);
     }
   };
 
@@ -108,6 +159,35 @@ export default function ResumeHub() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleRemoveSkill = (skillToRemove: string) => {
+    setEditableSkills(prev => prev.filter(s => s !== skillToRemove));
+    setSkillsSaved(false);
+  };
+
+  const handleAddSkill = () => {
+    const trimmed = newSkill.trim().toLowerCase();
+    if (!trimmed || editableSkills.includes(trimmed)) return;
+    setEditableSkills(prev => [...prev, trimmed]);
+    setNewSkill("");
+    setSkillsSaved(false);
+  };
+
+  const handleSaveSkills = async () => {
+    setIsSavingSkills(true);
+    try {
+      await call("/api/ai/resume/update-skills", {
+        method: "POST",
+        body: JSON.stringify({ skills: editableSkills })
+      });
+      setSkillsSaved(true);
+      setTimeout(() => setSkillsSaved(false), 3000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSavingSkills(false);
+    }
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col gap-2">
@@ -133,6 +213,7 @@ export default function ResumeHub() {
               accept=".pdf,.docx" 
               onChange={handleFileUpload} 
               className="absolute inset-0 opacity-0 cursor-pointer z-10"
+              id="resume-upload-input"
             />
             <div className="flex flex-col items-center justify-center text-center gap-4">
               <div className="w-16 h-16 rounded-full bg-accent-start/5 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -328,6 +409,150 @@ export default function ResumeHub() {
         </div>
 
       </div>
+
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* Extracted Skills Section — Full Width Below Main Grid  */}
+      {/* ═══════════════════════════════════════════════════════ */}
+
+      <AnimatePresence>
+        {(editableSkills.length > 0 || isExtracting) && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="card-glass overflow-hidden">
+              {/* Header */}
+              <div className="px-8 py-6 border-b border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 flex items-center justify-center">
+                    <Brain size={20} className="text-violet-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold tracking-tight">Extracted Skills</h2>
+                    <p className="text-sm text-text-secondary">
+                      {isExtracting ? "AI is analyzing your resume..." : `${editableSkills.length} skills detected — click to edit`}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Link
+                    href="/hidden-jobs"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-accent-start/30 text-accent-start hover:bg-accent-start/10 transition-all text-sm font-semibold"
+                  >
+                    <Briefcase size={16} />
+                    <span>Find Matching Jobs</span>
+                  </Link>
+                  <button
+                    onClick={handleSaveSkills}
+                    disabled={isSavingSkills || editableSkills.length === 0}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent-start text-white hover:bg-accent-start/90 transition-all text-sm font-semibold disabled:opacity-40 cursor-pointer"
+                  >
+                    {isSavingSkills ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : skillsSaved ? (
+                      <Check size={16} />
+                    ) : (
+                      <Save size={16} />
+                    )}
+                    <span>{skillsSaved ? "Saved!" : "Update Skills"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Skills Body */}
+              <div className="px-8 py-6">
+                {isExtracting ? (
+                  <div className="flex items-center justify-center py-12 gap-4">
+                    <Loader2 size={32} className="animate-spin text-violet-400" />
+                    <div>
+                      <p className="font-bold text-lg animate-pulse">Extracting Skills...</p>
+                      <p className="text-sm text-text-secondary">Our AI is parsing your resume for all relevant skills</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Skill Tags Grid */}
+                    <div className="flex flex-wrap gap-2.5" id="skills-tag-container">
+                      {editableSkills.map((skill) => (
+                        <motion.div
+                          key={skill}
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0.8, opacity: 0 }}
+                          className="group relative flex items-center gap-2 px-4 py-2 rounded-full bg-bg-elevated border border-border-subtle hover:border-violet-400/30 transition-all"
+                        >
+                          <Tag size={12} className="text-violet-400" />
+                          <span className="text-sm font-medium capitalize">{skill}</span>
+                          <button
+                            onClick={() => handleRemoveSkill(skill)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity ml-1 text-text-secondary hover:text-red-400 cursor-pointer"
+                          >
+                            <X size={14} />
+                          </button>
+                        </motion.div>
+                      ))}
+                    </div>
+
+                    {/* Add Skill Input */}
+                    <div className="flex items-center gap-3 max-w-md">
+                      <div className="flex-1 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-bg-elevated border border-border-subtle focus-within:border-violet-400/50 transition-colors">
+                        <Plus size={16} className="text-text-secondary flex-shrink-0" />
+                        <input
+                          type="text"
+                          value={newSkill}
+                          onChange={(e) => setNewSkill(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && handleAddSkill()}
+                          placeholder="Add a skill..."
+                          className="bg-transparent text-sm text-text-primary placeholder:text-text-secondary/50 outline-none flex-1"
+                          id="add-skill-input"
+                        />
+                      </div>
+                      <button
+                        onClick={handleAddSkill}
+                        disabled={!newSkill.trim()}
+                        className="px-4 py-2.5 rounded-xl bg-violet-500/10 text-violet-400 border border-violet-400/20 hover:bg-violet-500/20 transition-all text-sm font-semibold disabled:opacity-30 cursor-pointer"
+                      >
+                        Add
+                      </button>
+                    </div>
+
+                    {/* Extracted Profile Summary */}
+                    {extractedProfile && (extractedProfile.experience?.length > 0 || extractedProfile.projects?.length > 0) && (
+                      <div className="grid md:grid-cols-2 gap-4 pt-4 border-t border-border-subtle">
+                        {extractedProfile.experience?.length > 0 && (
+                          <div className="space-y-2">
+                            <h4 className="text-xs font-bold uppercase tracking-widest text-text-secondary">Experience</h4>
+                            {extractedProfile.experience.slice(0, 3).map((exp: any, i: number) => (
+                              <div key={i} className="bg-bg-elevated/50 rounded-lg p-3 border border-border-subtle">
+                                <p className="text-sm font-semibold">{exp.title}</p>
+                                <p className="text-xs text-text-secondary">{exp.company} · {exp.duration}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {extractedProfile.projects?.length > 0 && (
+                          <div className="space-y-2">
+                            <h4 className="text-xs font-bold uppercase tracking-widest text-text-secondary">Projects</h4>
+                            {extractedProfile.projects.slice(0, 3).map((proj: any, i: number) => (
+                              <div key={i} className="bg-bg-elevated/50 rounded-lg p-3 border border-border-subtle">
+                                <p className="text-sm font-semibold">{proj.name}</p>
+                                <p className="text-xs text-text-secondary line-clamp-2">{proj.description}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

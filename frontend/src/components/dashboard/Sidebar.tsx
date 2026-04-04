@@ -15,7 +15,8 @@ import {
   ChevronLeft,
   ChevronRight,
   BookOpen,
-  Globe
+  Globe,
+  Briefcase
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage, LANGUAGES, LanguageCode } from "@/context/LanguageContext";
@@ -147,6 +148,7 @@ export default function Sidebar() {
     { icon: Users,        label: t("nav.interview"),     href: "/interview" },
     { icon: Map,          label: t("nav.roadmap"),       href: "/roadmap" },
     { icon: Mic,          label: t("nav.interviewAI"),   href: "/interview-ai" },
+    { icon: Briefcase,    label: t("nav.hiddenJobs"),    href: "/hidden-jobs" },
     { icon: BookOpen,     label: t("nav.learn"),         href: "/learn" },
   ];
 

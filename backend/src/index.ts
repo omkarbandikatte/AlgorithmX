@@ -311,6 +311,7 @@ app.post('/api/ai/resume/enhance', authMiddleware, async (req: AuthenticatedRequ
 
 app.post('/api/ai/resume/import', authMiddleware, upload.single('resume'), async (req: AuthenticatedRequest, res: Response) => {
   try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded.' });
     let text = '';
     if (req.file.mimetype === 'application/pdf') {
       text = (await pdf(req.file.buffer)).text;
@@ -518,6 +519,312 @@ app.post('/api/generate-micro-roadmap', authMiddleware, async (req: Authenticate
   } catch (error: any) {
     console.error('❌ Micro Roadmap Error:', error.message);
     res.status(500).json({ error: 'Roadmap generation failed', details: error.message });
+  }
+});
+
+// ──────────────────────────────────────────────
+// Resume Skill Extraction (LLM-powered)
+// ──────────────────────────────────────────────
+
+const SKILL_ALIASES: Record<string, string> = {
+  'js': 'javascript', 'ts': 'typescript', 'py': 'python', 'rb': 'ruby',
+  'c#': 'csharp', 'c++': 'cpp', 'golang': 'go', 'node': 'nodejs',
+  'node.js': 'nodejs', 'react.js': 'react', 'reactjs': 'react',
+  'vue.js': 'vue', 'vuejs': 'vue', 'angular.js': 'angular', 'angularjs': 'angular',
+  'next.js': 'nextjs', 'express.js': 'expressjs', 'expressjs': 'expressjs',
+  'mongo': 'mongodb', 'postgres': 'postgresql', 'psql': 'postgresql',
+  'aws': 'amazon web services', 'gcp': 'google cloud platform',
+  'k8s': 'kubernetes', 'tf': 'terraform', 'ml': 'machine learning',
+  'ai': 'artificial intelligence', 'dl': 'deep learning',
+  'css3': 'css', 'html5': 'html', 'sass': 'scss',
+  'rest': 'rest api', 'restful': 'rest api',
+  'graphql': 'graphql', 'd3': 'd3.js', 'tailwind': 'tailwindcss',
+};
+
+function normalizeSkill(skill: string): string {
+  const trimmed = skill.trim().toLowerCase();
+  return SKILL_ALIASES[trimmed] || trimmed;
+}
+
+function deduplicateSkills(skills: string[]): string[] {
+  const seen = new Set<string>();
+  return skills
+    .map(normalizeSkill)
+    .filter(s => s.length > 0)
+    .filter(s => {
+      if (seen.has(s)) return false;
+      seen.add(s);
+      return true;
+    });
+}
+
+app.post('/api/ai/resume/extract-skills', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  const { resumeText } = req.body;
+  if (!resumeText) return res.status(400).json({ error: 'No resume text provided.' });
+
+  try {
+    console.log('🧠 Extracting skills from resume...');
+
+    const chat = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content: `You are an expert HR resume parser. Analyze the resume text and extract structured data.
+Return ONLY valid JSON with this exact structure:
+{
+  "name": "Full name from resume",
+  "email": "Email from resume or empty string",
+  "skills": ["skill1", "skill2", ...],
+  "experience": [{"title": "Job Title", "company": "Company", "duration": "Duration", "description": "Brief description"}],
+  "education": [{"degree": "Degree", "institution": "School", "year": "Year"}],
+  "projects": [{"name": "Project Name", "description": "Brief description", "technologies": ["tech1"]}]
+}
+Be thorough in extracting ALL skills mentioned — programming languages, frameworks, tools, soft skills, methodologies, databases, cloud platforms, etc.`
+        },
+        { role: 'user', content: resumeText }
+      ]
+    });
+
+    const extracted = JSON.parse(chat.choices[0].message.content || '{}');
+    
+    // Normalize and deduplicate skills
+    const normalizedSkills = deduplicateSkills(extracted.skills || []);
+
+    const result = {
+      name: extracted.name || '',
+      email: extracted.email || '',
+      skills: normalizedSkills,
+      experience: extracted.experience || [],
+      education: extracted.education || [],
+      projects: extracted.projects || [],
+    };
+
+    // Store in Firestore
+    if (db) {
+      await db.collection('users').doc(req.user!.uid).set(
+        {
+          extractedProfile: result,
+          skills: normalizedSkills,
+          profileUpdatedAt: admin.firestore.FieldValue.serverTimestamp()
+        },
+        { merge: true }
+      );
+    }
+
+    console.log(`✅ Extracted ${normalizedSkills.length} skills`);
+    res.json(result);
+  } catch (error: any) {
+    console.error('❌ Skill Extraction Error:', error.message);
+    res.status(500).json({ error: 'Skill extraction failed.', details: error.message });
+  }
+});
+
+// Update skills manually (editable skills)
+app.post('/api/ai/resume/update-skills', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  const { skills } = req.body;
+  if (!skills || !Array.isArray(skills)) return res.status(400).json({ error: 'skills array is required' });
+
+  try {
+    const normalizedSkills = deduplicateSkills(skills);
+    if (db) {
+      await db.collection('users').doc(req.user!.uid).set(
+        { skills: normalizedSkills, profileUpdatedAt: admin.firestore.FieldValue.serverTimestamp() },
+        { merge: true }
+      );
+    }
+    res.json({ skills: normalizedSkills, message: 'Skills updated successfully' });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to update skills', details: error.message });
+  }
+});
+
+// Get user skills
+app.get('/api/ai/resume/skills', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  if (!db) return res.status(500).json({ error: 'DB not initialized' });
+  try {
+    const doc = await db.collection('users').doc(req.user!.uid).get();
+    const data = doc.data() || {};
+    res.json({ skills: data.skills || [], extractedProfile: data.extractedProfile || null });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to fetch skills', details: error.message });
+  }
+});
+
+// ──────────────────────────────────────────────
+// Hidden Job Market (Arbeitnow API + Smart Matching)
+// ──────────────────────────────────────────────
+
+interface CachedJobs {
+  data: any[];
+  fetchedAt: number;
+}
+
+let jobCache: CachedJobs | null = null;
+const JOB_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function fetchArbeitnowJobs(): Promise<any[]> {
+  if (jobCache && Date.now() - jobCache.fetchedAt < JOB_CACHE_TTL) {
+    console.log('📦 Returning cached jobs');
+    return jobCache.data;
+  }
+
+  try {
+    console.log('🔄 Fetching fresh jobs from Arbeitnow...');
+    const response = await fetch('https://www.arbeitnow.com/api/job-board-api');
+    if (!response.ok) throw new Error(`API returned ${response.status}`);
+    const result = await response.json();
+    const jobs = result.data || [];
+    
+    jobCache = { data: jobs, fetchedAt: Date.now() };
+    console.log(`✅ Cached ${jobs.length} jobs`);
+    return jobs;
+  } catch (error: any) {
+    console.error('❌ Arbeitnow fetch error:', error.message);
+    // Return stale cache if available
+    if (jobCache) return jobCache.data;
+    return [];
+  }
+}
+
+function computeJobMatchScore(userSkills: string[], jobTags: string[], jobTitle: string, jobDescription: string): {
+  score: number;
+  matchedSkills: string[];
+  totalPossible: number;
+} {
+  const matchedSkills: string[] = [];
+  let points = 0;
+  const maxPoints = userSkills.length * 2;
+
+  const jobTagsLower = (jobTags || []).map((t: string) => t.toLowerCase());
+  const titleLower = (jobTitle || '').toLowerCase();
+  const descLower = (jobDescription || '').toLowerCase();
+
+  for (const skill of userSkills) {
+    const skillLower = skill.toLowerCase();
+    
+    // Exact tag match = +2
+    if (jobTagsLower.includes(skillLower)) {
+      points += 2;
+      matchedSkills.push(skill);
+      continue;
+    }
+
+    // Check if skill appears in tags with partial match
+    const partialTagMatch = jobTagsLower.some(t => t.includes(skillLower) || skillLower.includes(t));
+    if (partialTagMatch) {
+      points += 1.5;
+      matchedSkills.push(skill);
+      continue;
+    }
+
+    // Check title or description for partial match = +1
+    if (titleLower.includes(skillLower) || descLower.includes(skillLower)) {
+      points += 1;
+      matchedSkills.push(skill);
+    }
+  }
+
+  return {
+    score: maxPoints > 0 ? Math.round((points / maxPoints) * 100) : 0,
+    matchedSkills,
+    totalPossible: maxPoints,
+  };
+}
+
+app.get('/api/jobs/hidden-market', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    // Get user's skills from Firestore
+    let userSkills: string[] = [];
+    if (db) {
+      const userDoc = await db.collection('users').doc(req.user!.uid).get();
+      const userData = userDoc.data() || {};
+      userSkills = userData.skills || [];
+    }
+
+    // Fetch jobs (with cache)
+    const allJobs = await fetchArbeitnowJobs();
+
+    // Score and rank every job
+    const scoredJobs = allJobs.map((job: any) => {
+      const { score, matchedSkills } = computeJobMatchScore(
+        userSkills,
+        job.tags || [],
+        job.title || '',
+        job.description || ''
+      );
+
+      // Missing skills = job tags not in user skills
+      const userSkillsLower = userSkills.map(s => s.toLowerCase());
+      const missingSkills = (job.tags || []).filter((t: string) =>
+        !userSkillsLower.some(us => us === t.toLowerCase() || t.toLowerCase().includes(us) || us.includes(t.toLowerCase()))
+      );
+
+      return {
+        title: job.title,
+        company_name: job.company_name,
+        tags: job.tags || [],
+        location: job.location,
+        url: job.url,
+        remote: job.remote,
+        description: job.description,
+        created_at: job.created_at,
+        matchScore: score,
+        matchedSkills,
+        missingSkills: missingSkills.slice(0, 5),
+      };
+    });
+
+    // Sort by match score descending
+    scoredJobs.sort((a: any, b: any) => b.matchScore - a.matchScore);
+
+    res.json({
+      jobs: scoredJobs,
+      totalJobs: scoredJobs.length,
+      userSkills,
+      cachedAt: jobCache?.fetchedAt || null,
+    });
+  } catch (error: any) {
+    console.error('❌ Hidden Job Market Error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch job market data', details: error.message });
+  }
+});
+
+// AI deep-match analysis for a specific job
+app.post('/api/jobs/ai-match', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  const { jobTitle, jobTags, jobDescription, userSkills } = req.body;
+  if (!jobTitle || !userSkills) return res.status(400).json({ error: 'jobTitle and userSkills required' });
+
+  try {
+    const chat = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content: `You are a career advisor AI. Compare the user's skills with a job listing and return a detailed analysis.
+Return JSON:
+{
+  "matchScore": <0-100>,
+  "reasoning": "2-3 sentences explaining the match",
+  "whyFits": "2-3 sentences on why this job fits the user",
+  "skillsToLearn": ["skill1", "skill2"],
+  "aiCoverMessage": "A short, professional cover message (3-4 sentences) the user can send when applying"
+}`
+        },
+        {
+          role: 'user',
+          content: `User Skills: ${JSON.stringify(userSkills)}\n\nJob Title: ${jobTitle}\nJob Tags: ${JSON.stringify(jobTags || [])}\nJob Description: ${(jobDescription || '').substring(0, 2000)}`
+        }
+      ]
+    });
+
+    const result = JSON.parse(chat.choices[0].message.content || '{}');
+    res.json(result);
+  } catch (error: any) {
+    console.error('❌ AI Match Error:', error.message);
+    res.status(500).json({ error: 'AI match analysis failed', details: error.message });
   }
 });
 
