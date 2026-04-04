@@ -38,28 +38,27 @@ app.post('/api/ai/roadmap', authMiddleware, async (req: AuthenticatedRequest, re
   if (!topic) return res.status(400).json({ error: 'Please provide a topic.' });
 
   try {
-    console.log(`🗺️  AI Roadmap System Triggered: [${topic}] in ${language}`);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash-lite",
-      generationConfig: { responseMimeType: "application/json" } // FORCING JSON MODE
+    console.log(`🗺️ AI Roadmap System Triggered: [${topic}] in ${language} (Groq Optimized)`);
+    
+    const chat = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert curriculum designer AI. Create a high-quality hierarchical learning roadmap for: "${topic}".
+            Return ONLY a JSON object with:
+            - nodes: array of {id: string, label: string, description: string}
+            - edges: array of {from: string, to: string}
+            Requirements: 6-10 nodes, strict dependency graph from beginner to advanced.
+            IMPORTANT: Transcribe every label and description EXACTLY into the ${language} language code.`
+        },
+        { role: "user", content: `Generate a detailed roadmap for ${topic}` }
+      ],
+      response_format: { type: "json_object" }
     });
 
-    const prompt = `
-      Generative Task: Create a hierarchical learning roadmap for: "${topic}".
-      IMPORTANT: The entire response MUST be translated into the ${language} language code.
-      Return a JSON object with:
-      - nodes: array of {id: string, label: string (in ${language}), description: string (in ${language})}
-      - edges: array of {from: string, to: string}
-      Requirements: 6-10 nodes, strict dependency graph, beginner to advanced.
-    `;
-
-    const result = await model.generateContent(prompt);
-    const text = (await result.response).text().trim();
-
-    console.log("🎨 RAW Response Captured.");
-
-    const roadmap = JSON.parse(text);
-    console.log("✅ Final Parsing Successful");
+    const roadmap = JSON.parse(chat.choices[0].message.content || '{}');
+    console.log("✅ Final Groq Roadmap Parsing Successful");
     res.json(roadmap);
   } catch (error: any) {
     console.error('❌ AI Roadmap Failure Deep-Dive:', error.message);
@@ -154,6 +153,43 @@ app.post('/api/ai/doubt-solver', authMiddleware, upload.single('file'), async (r
   } catch (error: any) {
     console.error('❌ Doubt Solver Error:', error.message);
     res.status(500).json({ error: 'Doubt solver failed.' });
+  }
+});
+
+// POST /api/save-doubt-session — Persist doubt session in Firestore
+app.post('/api/save-doubt-session', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  if (!db) return res.status(500).json({ error: 'DB not initialized' });
+  const { sessionId, title, messages } = req.body;
+  if (!sessionId || !messages) return res.status(400).json({ error: 'Session ID and messages required' });
+
+  try {
+    const uid = req.user!.uid;
+    await db.collection('users').doc(uid).collection('doubts').doc(sessionId).set({
+      title: title || 'New Doubt',
+      messages,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    // Increment doubt count in profile for dashboard
+    await db.collection('users').doc(uid).set({
+        doubtSolverCount: admin.firestore.FieldValue.increment(1)
+    }, { merge: true });
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to save doubt session' });
+  }
+});
+
+// GET /api/user/doubts — Retrieve all doubt sessions
+app.get('/api/user/doubts', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  if (!db) return res.status(500).json({ error: 'DB not initialized' });
+  try {
+    const uid = req.user!.uid;
+    const snap = await db.collection('users').doc(uid).collection('doubts').orderBy('updatedAt', 'desc').get();
+    res.json(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch doubts' });
   }
 });
 
@@ -841,11 +877,13 @@ app.get('/api/user/history', authMiddleware, async (req: AuthenticatedRequest, r
     const roadmapsSnap = await db.collection('users').doc(uid).collection('roadmaps').orderBy('createdAt', 'desc').get();
     const interviewsSnap = await db.collection('users').doc(uid).collection('interviews').orderBy('createdAt', 'desc').get();
     const resumesSnap = await db.collection('users').doc(uid).collection('resumes').orderBy('createdAt', 'desc').get();
+    const doubtsSnap = await db.collection('users').doc(uid).collection('doubts').orderBy('updatedAt', 'desc').get();
 
     res.json({
       roadmaps: roadmapsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
       interviews: interviewsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-      resumes: resumesSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+      resumes: resumesSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+      doubts: doubtsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch history' });

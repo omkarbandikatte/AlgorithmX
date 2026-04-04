@@ -185,9 +185,10 @@ export default function DashboardOverview() {
           ...hist.roadmaps.map((r: any) => ({ ...r, type: "Roadmap", title: r.topic, date: r.createdAt?._seconds ? new Date(r.createdAt._seconds * 1000) : new Date() })),
           ...hist.interviews.map((i: any) => ({ ...i, type: "Interview", title: `Score: ${i.score}/100`, date: i.createdAt?._seconds ? new Date(i.createdAt._seconds * 1000) : new Date() })),
           ...hist.resumes.map((r: any) => ({ ...r, type: "Resume", title: `ATS Score: ${r.totalScore}`, date: r.createdAt?._seconds ? new Date(r.createdAt._seconds * 1000) : new Date() })),
+          ...hist.doubts.map((d: any) => ({ ...d, type: "Doubt", title: d.title || "Neural Solver Session", date: d.updatedAt?._seconds ? new Date(d.updatedAt._seconds * 1000) : new Date() })),
         ]
           .sort((a, b) => b.date.getTime() - a.date.getTime())
-          .slice(0, 5);
+          .slice(0, 8);
         setHistory(combined);
       } catch (e) {
         console.error(e);
