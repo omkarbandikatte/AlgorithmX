@@ -50,6 +50,14 @@ export function ConceptPreviewCard({ concept, onPreview }: Props) {
           fill
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          onError={(e: any) => {
+            // Fallback to HQ if MQ fails, then to a branded placeholder
+            if (e.target.src.includes('mqdefault')) {
+              e.target.src = `https://img.youtube.com/vi/${concept.videoId}/hqdefault.jpg`;
+            } else {
+              e.target.src = 'https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=1000&auto=format&fit=crop';
+            }
+          }}
         />
         <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
           <Play className="text-white/80 group-hover:text-[#F97316] w-12 h-12 transition-colors duration-300 drop-shadow-lg" fill="currentColor" />

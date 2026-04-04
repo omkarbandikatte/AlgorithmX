@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import * as tf from "@tensorflow/tfjs";
 import "@tensorflow/tfjs-backend-webgl";
 import * as blazeface from "@tensorflow-models/blazeface";
-import { AlertTriangle, UserX, Users, EyeOff, XCircle, ShieldAlert } from "lucide-react";
+import { AlertTriangle, UserX, Users, EyeOff, XCircle, ShieldAlert, Maximize } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export interface ProctoringReport {
@@ -50,13 +50,20 @@ export function ProctoringManager({ videoRef, onTerminate, onUpdateReport }: Pro
     multipleFaces: false,
     lookingAway: false,
   });
+  const [isFullscreen, setIsFullscreen] = useState(true);
 
   const detectionIntervalRef = useRef<any>(null);
   const scoreTickRef = useRef<any>(null);
 
+  const onUpdateReportRef = useRef(onUpdateReport);
+  useEffect(() => { onUpdateReportRef.current = onUpdateReport; }, [onUpdateReport]);
+
+  const onTerminateRef = useRef(onTerminate);
+  useEffect(() => { onTerminateRef.current = onTerminate; }, [onTerminate]);
+
   // Sync report
   useEffect(() => {
-    onUpdateReport({
+    onUpdateReportRef.current({
       ...violations,
       attentionScore,
       isTerminated: false
@@ -74,13 +81,16 @@ export function ProctoringManager({ videoRef, onTerminate, onUpdateReport }: Pro
     if (detectionIntervalRef.current) clearInterval(detectionIntervalRef.current);
     if (scoreTickRef.current) clearInterval(scoreTickRef.current);
     
-    onUpdateReport({
-      ...violations,
-      attentionScore,
-      isTerminated: true
+    // Defer parent state updates to avoid React render-loop/warning
+    Promise.resolve().then(() => {
+      onUpdateReportRef.current({
+        ...violations,
+        attentionScore,
+        isTerminated: true
+      });
+      onTerminateRef.current(reason);
     });
-    onTerminate(reason);
-  }, [violations, attentionScore, onUpdateReport, onTerminate]);
+  }, [violations, attentionScore]);
 
   // Model Initialization
   useEffect(() => {
@@ -213,7 +223,10 @@ export function ProctoringManager({ videoRef, onTerminate, onUpdateReport }: Pro
     };
 
     const handleFullscreenChange = () => {
-      if (!document.fullscreenElement) {
+      const isFull = !!document.fullscreenElement;
+      setIsFullscreen(isFull);
+      
+      if (!isFull) {
         setViolations(prev => {
           const exits = prev.fullscreenExits + 1;
           if (exits >= MAX_FULLSCREEN_EXITS) {
@@ -262,6 +275,25 @@ export function ProctoringManager({ videoRef, onTerminate, onUpdateReport }: Pro
           >
             <AlertTriangle size={24} />
             {warningMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      <AnimatePresence>
+        {!isFullscreen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="absolute inset-x-0 bottom-12 flex justify-center z-50 px-4"
+          >
+            <button 
+              onClick={() => document.documentElement.requestFullscreen()}
+              className="bg-accent-start hover:bg-accent-end text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center gap-3 font-black uppercase tracking-widest text-xs transition-all active:scale-95 group animate-bounce"
+            >
+              <Maximize size={20} className="group-hover:rotate-90 transition-transform duration-500" />
+              <span>Re-enter Fullscreen</span>
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
