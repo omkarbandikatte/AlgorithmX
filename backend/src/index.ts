@@ -47,12 +47,18 @@ app.post('/api/ai/roadmap', authMiddleware, async (req: AuthenticatedRequest, re
           role: "system",
           content: `You are an expert curriculum designer AI. Create a high-quality hierarchical learning roadmap for: "${topic}".
             Return ONLY a JSON object with:
-            - nodes: array of {id: string, label: string, description: string}
+            - nodes: array of {
+                id: string, 
+                label: string, 
+                description: string, 
+                youtubeQuery: string (for technical search),
+                quiz: array of { question: string, options: string[], correctAnswer: string } (3 questions)
+              }
             - edges: array of {from: string, to: string}
             Requirements: 6-10 nodes, strict dependency graph from beginner to advanced.
-            IMPORTANT: Transcribe every label and description EXACTLY into the ${language} language code.`
+            IMPORTANT: Every text field (labels, descriptions, quiz questions/options) MUST be in the ${language} language code.`
         },
-        { role: "user", content: `Generate a detailed roadmap for ${topic}` }
+        { role: "user", content: `Generate an interactive roadmap for ${topic}` }
       ],
       response_format: { type: "json_object" }
     });
